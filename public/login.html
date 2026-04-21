@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ICT Inventory Login</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="login-wrap">
+    <div class="card login-card">
+      <div class="center mb-20">
+        <div class="brand">ICT <span>Inventory</span></div>
+        <div class="subbrand">Local Advanced Inventory System</div>
+      </div>
+
+      <form id="loginForm">
+        <div class="mb-16">
+          <label>Username</label>
+          <input type="text" id="username" class="input" placeholder="Enter username" required />
+        </div>
+
+        <div class="mb-16">
+          <label>Password</label>
+          <input type="password" id="password" class="input" placeholder="Enter password" required />
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width:100%;">Login</button>
+      </form>
+
+      <p class="small mt-16 center">Default login: admin / admin123</p>
+      <p id="loginMsg" class="small center mt-16"></p>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+      const msg = document.getElementById("loginMsg");
+
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ username, password })
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        window.location.href = "/dashboard.html";
+      } else {
+        msg.textContent = data.error || "Login failed";
+      }
+    });
+  </script>
+</body>
+</html>

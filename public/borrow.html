@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Borrow Page</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">ICT <span>Inventory</span></div>
+      <div class="subbrand">Advanced Local System</div>
+
+      <nav class="menu">
+        <a href="dashboard.html">Dashboard</a>
+        <a href="inventory.html">Inventory</a>
+        <a href="borrow.html" class="active">Borrow Page</a>
+        <a href="#" onclick="logout()">Logout</a>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div>
+          <div class="title">Borrow Page</div>
+          <div class="subtitle">Manage borrowed equipment records professionally and efficiently</div>
+        </div>
+        <div class="actions top-actions">
+          <button class="btn btn-success" onclick="printBorrow()">Print Borrow Report</button>
+        </div>
+      </div>
+
+      <div class="borrow-hero card mb-20">
+        <div class="borrow-hero-content">
+          <div>
+            <div class="section-title">Borrowed ICT Equipment Monitoring</div>
+            <p class="small borrow-hero-text">
+              Use this page to record all borrowed ICT equipment, maintain accountability,
+              and prepare an organized printable report for unit documentation.
+            </p>
+          </div>
+          <div class="borrow-hero-badge">
+            <span class="badge borrow-badge">Active Records</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="borrow-page-grid mb-20">
+        <div class="card">
+          <div class="section-title">Borrowed Equipment Form</div>
+          <p class="small section-subtext">Fill in the required information before saving the borrowed record.</p>
+
+          <form id="borrowForm">
+            <div class="form-grid">
+              <div>
+                <label class="field-label">Borrower Name</label>
+                <input type="text" id="borrower_name" class="input" placeholder="Enter borrower name" required />
+              </div>
+
+              <div>
+                <label class="field-label">Office / Unit</label>
+                <input type="text" id="office_unit" class="input" placeholder="Enter office or unit" required />
+              </div>
+
+              <div>
+                <label class="field-label">Equipment</label>
+                <input type="text" id="equipment" class="input" placeholder="Enter equipment name" required />
+              </div>
+
+              <div>
+                <label class="field-label">Quantity</label>
+                <input type="number" id="quantity" class="input" placeholder="Enter quantity" required />
+              </div>
+
+              <div>
+                <label class="field-label">Date Borrowed</label>
+                <input type="date" id="date_borrowed" class="input" required />
+              </div>
+
+              <div>
+                <label class="field-label">Date Return</label>
+                <input type="date" id="date_return" class="input" required />
+              </div>
+
+              <div class="full">
+                <label class="field-label">Purpose</label>
+                <textarea id="purpose" class="input" rows="3" placeholder="State the purpose of borrowing" required></textarea>
+              </div>
+
+              <div class="full">
+                <label class="field-label">Remarks</label>
+                <textarea id="borrow_remarks" class="input" rows="3" placeholder="Additional remarks (optional)"></textarea>
+              </div>
+            </div>
+
+            <div class="actions mt-16">
+              <button type="submit" class="btn btn-primary">Save Borrowed Record</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="borrow-side-column">
+          <div class="card borrow-info-card">
+            <div class="section-title">Borrowing Reminders</div>
+            <div class="borrow-note-list">
+              <div class="borrow-note-item">
+                <span class="borrow-note-dot"></span>
+                <p>Ensure the borrower name and office/unit are complete and correct.</p>
+              </div>
+              <div class="borrow-note-item">
+                <span class="borrow-note-dot"></span>
+                <p>Verify the quantity and exact equipment description before saving.</p>
+              </div>
+              <div class="borrow-note-item">
+                <span class="borrow-note-dot"></span>
+                <p>Always indicate the borrowing period for easier tracking and return monitoring.</p>
+              </div>
+              <div class="borrow-note-item">
+                <span class="borrow-note-dot"></span>
+                <p>Use the print report button for formal documentation and submission.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="card signatory-card">
+            <div class="section-title">Report Signatories</div>
+            <p class="small section-subtext">Select the personnel who will appear in the printed borrow report.</p>
+
+            <div class="signatory-stack">
+              <div class="signatory-field">
+                <label class="field-label">Prepared By</label>
+                <select id="preparedName" class="input" onchange="selectPreparedBorrow()">
+                  <option value="">Select</option>
+                  <option value="batain">Sgt MA Loise Abby O batain</option>
+                  <option value="camarillo">Sgt Robert Jhon R Camarillo</option>
+                  <option value="bantang">A1C Ian Gabriel B Bantang</option>
+                  <option value="javillo">AM Victor D Javillo</option>
+                  <option value="bog-ac">AW Love Joy S Bog-ac</option>
+                  <option value="pacleb">AM Jayson Carl W Pacleb</option>
+                  <option value="domingo">AM Joshua M Domingo</option>
+                  <option value="palomo">AM Alexander C Palomo</option>
+                </select>
+              </div>
+
+              <div class="signatory-field">
+                <label class="field-label">Checked By</label>
+                <select id="checkedName" class="input" onchange="selectCheckedBorrow()">
+                  <option value="">Select</option>
+                  <option value="liwagan">MAJ MAYLENE B LIW-AGAN</option>
+                  <option value="calimbas">CPT ROLAND JAMES A CALIMBAS</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card table-wrap borrow-table-card">
+        <div class="table-header-bar">
+          <div class="section-title">Borrowed Records</div>
+          <p class="small">All borrowed ICT equipment records are shown below for monitoring and printing.</p>
+        </div>
+
+        <div class="table-wrapper">
+          <table class="borrow-table">
+            <thead>
+              <tr>
+                <th>No.</th>
+                <th>Borrower</th>
+                <th>Office</th>
+                <th>Equipment</th>
+                <th>Quantity</th>
+                <th>Date Borrowed</th>
+                <th>Date Return</th>
+                <th>Purpose</th>
+                <th>Remarks</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="borrowTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    checkSession();
+    loadBorrows();
+    loadSignatories();
+  </script>
+
+  <div id="printArea" class="print-area">
+  <div class="report-page borrow-print-page">
+
+    <div class="flight-plan-top">
+      Flight Plan 2040 Vision: A Credible and Agile Air Force Adaptable to Modern Warfare
+      and Responsive to National and Regional Security and Development
+    </div>
+
+    <div class="header-container">
+      <img src="images/paf-logo-left.png" class="header-logo-left" alt="Left Logo" />
+
+      <div class="header-text">
+        <div class="header-title">PHILIPPINE AIR FORCE</div>
+        <div class="header-sub">580TH AIRCRAFT CONTROL AND WARNING WING</div>
+        <div class="header-subs">DIRECTORATE FOR COMMUNICATIONS, ELECTRONICS AND INFORMATION SYSTEMS OFFICE</div>
+        <div class="header-sub">Wallace Air Station, City of San Fernando, La Union</div>
+      </div>
+
+      <img src="images/paf-logo-right.png" class="header-logo-right" alt="Right Logo" />
+    </div>
+
+    <h3 class="print-report-title">BORROWED ICT EQUIPMENT REPORT</h3>
+    <p class="print-date-line">Date Printed: <span id="printDate"></span></p>
+
+    <table class="print-table borrow-print-table">
+      <thead>
+        <tr>
+          <th>No</th>
+          <th>Borrower</th>
+          <th>Office</th>
+          <th>Equipment</th>
+          <th>Quantity</th>
+          <th>Date Borrowed</th>
+          <th>Date Return</th>
+          <th>Purpose</th>
+          <th>Remarks</th>
+        </tr>
+      </thead>
+      <tbody id="printBorrowBody"></tbody>
+    </table>
+
+    <div class="signature-section borrow-signature-section">
+      <div class="signature-box">
+        <div class="signature-label">Prepared by:</div>
+
+        <div class="signature-stack">
+          <img id="preparedSignatureImg" class="sig-img" alt="Prepared Signature" />
+          <div class="sig-name" id="preparedPrintName"></div>
+          <div class="rank-line">
+            <span id="preparedPrintRank"></span> <span>PAF</span>
+          </div>
+          <div class="sig-position" id="preparedPrintPosition"></div>
+        </div>
+      </div>
+
+      <div class="signature-box">
+        <div class="signature-label">Checked by:</div>
+
+        <div class="signature-stack">
+          <img id="checkedSignatureImg" class="sig-img" alt="Checked Signature" />
+          <div class="sig-name" id="checkedPrintName"></div>
+          <div class="rank-line">
+            <span id="checkedPrintRank"></span> <span>PAF</span>
+          </div>
+          <div class="sig-position" id="checkedPrintPosition"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="print-footer">
+      <img src="images/footer.png" class="footer-image" alt="Footer" />
+    </div>
+  </div>
+</div>
+</body>
+</html>

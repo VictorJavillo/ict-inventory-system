@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DCEISO Inventory Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">DCEISO <span>Inventory</span></div>
+      <div class="subbrand">for future reference</div>
+
+      <nav class="menu">
+        <a href="dashboard.html" class="active">Dashboard</a>
+        <a href="inventory.html">Inventory</a>
+        <a href="borrow.html">Borrowed Page</a>
+        <a href="#" onclick="logout()">Logout</a>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div>
+          <div class="title">Dashboard Overview</div>
+          <div class="subtitle">Professional summary of ICT assets and inventory records</div>
+        </div>
+
+        <div class="actions top-actions">
+          <button type="button" class="btn btn-gray" onclick="window.location.href='inventory.html'">
+            Open Inventory
+          </button>
+          <button type="button" class="btn btn-primary" onclick="loadDashboard()">
+            Refresh Dashboard
+          </button>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="card stat-card">
+          <div class="stat-icon">📦</div>
+          <div class="stat-label">Total Assets</div>
+          <div class="stat-number" id="totalAssets">0</div>
+        </div>
+
+        <div class="card stat-card">
+          <div class="stat-icon">✅</div>
+          <div class="stat-label">OPNL</div>
+          <div class="stat-number" id="opnlAssets">0</div>
+        </div>
+
+        <div class="card stat-card">
+          <div class="stat-icon">⚠️</div>
+          <div class="stat-label">NOPNL</div>
+          <div class="stat-number" id="nopnlAssets">0</div>
+        </div>
+
+        <div class="card stat-card">
+          <div class="stat-icon">📄</div>
+          <div class="stat-label">Borrowed</div>
+          <div class="stat-number" id="borrowedAssets">0</div>
+        </div>
+      </div>
+
+      <div class="two-col dashboard-charts">
+        <div class="card chart-card">
+          <div class="section-title">Status Graph</div>
+          <div class="small">Click the bars to view inside records.</div>
+          <div class="chart-box">
+            <canvas id="statusChart"></canvas>
+          </div>
+        </div>
+
+        <div class="card chart-card">
+          <div class="section-title">License Pie Chart</div>
+          <div class="small">Click the pie slices to view inside records.</div>
+          <div class="chart-box">
+            <canvas id="licenseChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="card chart-card mt-16">
+        <div class="section-title">Category Distribution</div>
+        <div class="small">Click the bars to view records by category.</div>
+        <div class="chart-box">
+          <canvas id="categoryChart"></canvas>
+        </div>
+      </div>
+
+      <div class="card table-wrap dashboard-table-card">
+        <div class="table-header-bar">
+          <div class="section-title">Recent Inventory Records</div>
+          <div class="small">Latest 10 records from inventory.</div>
+        </div>
+
+        <div class="table-wrapper">
+          <table class="inventory-table">
+            <thead>
+              <tr>
+                <th>NR</th>
+                <th>Category</th>
+                <th>Description</th>
+                <th>Serial Number</th>
+                <th>Property Number</th>
+                <th>Status</th>
+                <th>Unit</th>
+                <th>OS</th>
+                <th>MS Office</th>
+                <th>Antivirus</th>
+                <th>Remarks</th>
+              </tr>
+            </thead>
+            <tbody id="dashboardTableBody">
+              <tr>
+                <td colspan="11" class="empty-state">No inventory records found.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal" id="chartModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="chartDetailsTitle">Chart Details</h2>
+        <button type="button" class="close-btn" onclick="closeModal('chartModal')">&times;</button>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="inventory-table">
+          <thead>
+            <tr>
+              <th>NR</th>
+              <th>Category</th>
+              <th>Description</th>
+              <th>Serial Number</th>
+              <th>Property Number</th>
+              <th>Status</th>
+              <th>Unit</th>
+              <th>OS</th>
+              <th>MS Office</th>
+              <th>Antivirus</th>
+              <th>Remarks</th>
+            </tr>
+          </thead>
+          <tbody id="chartDetailsBody">
+            <tr>
+              <td colspan="11" class="empty-state">No details available.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    checkSession();
+    loadDashboard();
+  </script>
+</body>
+</html>
