@@ -544,6 +544,3 @@ app.get("/api/test-db", async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
-app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
-});
