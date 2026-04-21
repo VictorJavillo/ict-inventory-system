@@ -2,6 +2,7 @@ const express = require("express");
 const session = require("express-session");
 const path = require("path");
 const { Pool } = require("pg");
+const bcrypt = require("bcryptjs");
 require("dotenv").config();
 
 const app = express();
@@ -167,11 +168,27 @@ async function initializeDatabase() {
     );
 
     if (existingAdmin.rows.length === 0) {
+      const hashedPassword = await bcrypt.hash("admin123", 10);
+
       await pool.query(
         `INSERT INTO users (username, password) VALUES ($1, $2)`,
-        ["admin", "admin123"]
+        ["admin", hashedPassword]
       );
+
       console.log("Default user created: admin / admin123");
+    } else {
+      const admin = existingAdmin.rows[0];
+
+      if (admin.password && !admin.password.startsWith("$2")) {
+        const hashedPassword = await bcrypt.hash(admin.password, 10);
+
+        await pool.query(
+          `UPDATE users SET password = $1 WHERE username = $2`,
+          [hashedPassword, "admin"]
+        );
+
+        console.log("Admin password upgraded to hashed.");
+      }
     }
 
     console.log("Supabase/Postgres database ready.");
@@ -196,8 +213,8 @@ app.post("/api/login", async (req, res) => {
 
   try {
     const result = await pool.query(
-      `SELECT * FROM users WHERE username = $1 AND password = $2 LIMIT 1`,
-      [username, password]
+      `SELECT * FROM users WHERE username = $1 LIMIT 1`,
+      [username]
     );
 
     const user = result.rows[0];
@@ -206,7 +223,17 @@ app.post("/api/login", async (req, res) => {
       return res.status(401).json({ error: "Invalid username or password" });
     }
 
-    req.session.user = { id: user.id, username: user.username };
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+      return res.status(401).json({ error: "Invalid username or password" });
+    }
+
+    req.session.user = {
+      id: user.id,
+      username: user.username
+    };
+
     res.json({ success: true, username: user.username });
   } catch (error) {
     console.error("Login error:", error.message);

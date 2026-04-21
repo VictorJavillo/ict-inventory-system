@@ -4,9 +4,11 @@
   "description": "Local ICT Inventory System",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "backup": "powershell -Command \"$env:PGPASSWORD='BagongPassword!!!'; & 'C:\\Program Files\\PostgreSQL\\18\\bin\\pg_dump.exe' -h aws-1-ap-southeast-2.pooler.supabase.com -p 6543 -U postgres.vhzmiladmvbbhoifcctw -d postgres -f 'backups\\ict_inventory_backup.sql'\""
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "dotenv": "^17.4.2",
     "express": "^4.21.2",
     "express-session": "^1.18.1",
