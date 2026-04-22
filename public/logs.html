@@ -3,401 +3,369 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Activity Logs</title>
+  <title>Activity Logs - ICT Inventory</title>
   <link rel="stylesheet" href="style.css" />
   <style>
-    :root {
-      --bg: #f4f7fb;
-      --card: #ffffff;
-      --text: #1f2937;
-      --muted: #6b7280;
-      --border: #e5e7eb;
-      --primary: #2563eb;
-      --primary-dark: #1d4ed8;
-      --danger: #dc2626;
-      --danger-dark: #b91c1c;
-      --shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-      --radius: 18px;
-    }
-
     * {
       box-sizing: border-box;
     }
 
     body {
       margin: 0;
-      font-family: Arial, Helvetica, sans-serif;
-      background: var(--bg);
-      color: var(--text);
+      font-family: Arial, sans-serif;
+      background: #f4f7fb;
+      color: #1f2937;
     }
 
-    .logs-page {
+    .layout {
+      display: flex;
       min-height: 100vh;
-      padding: 24px;
     }
 
-    .topbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 16px;
-      flex-wrap: wrap;
-      margin-bottom: 24px;
-    }
-
-    .page-title h1 {
-      margin: 0;
-      font-size: 2rem;
-    }
-
-    .page-title p {
-      margin: 6px 0 0;
-      color: var(--muted);
-      font-size: 0.95rem;
-    }
-
-    .nav-links {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-top: 10px;
-    }
-
-    .nav-link {
-      text-decoration: none;
-      color: var(--primary);
-      font-weight: 600;
-      font-size: 0.92rem;
-    }
-
-    .top-actions {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      align-items: center;
-    }
-
-    .user-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 12px;
-      background: #eef2ff;
-      border-radius: 999px;
-      font-size: 0.9rem;
-      font-weight: 600;
-      color: #3730a3;
-    }
-
-    .btn {
-      border: none;
-      border-radius: 12px;
-      padding: 12px 18px;
-      font-size: 0.95rem;
-      cursor: pointer;
-      transition: 0.2s ease;
-      font-weight: 600;
-    }
-
-    .btn-primary {
-      background: var(--primary);
+    .sidebar {
+      width: 250px;
+      background: linear-gradient(180deg, #0f172a, #1e293b);
       color: white;
-    }
-
-    .btn-primary:hover {
-      background: var(--primary-dark);
-    }
-
-    .btn-danger {
-      background: var(--danger);
-      color: white;
-    }
-
-    .btn-danger:hover {
-      background: var(--danger-dark);
-    }
-
-    .btn-secondary {
-      background: #e5e7eb;
-      color: #111827;
-    }
-
-    .btn-secondary:hover {
-      background: #d1d5db;
-    }
-
-    .card {
-      background: var(--card);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      border: 1px solid var(--border);
-    }
-
-    .card-header {
-      padding: 20px 20px 10px;
-    }
-
-    .card-header h2 {
-      margin: 0;
-      font-size: 1.2rem;
-    }
-
-    .card-header p {
-      margin: 6px 0 0;
-      color: var(--muted);
-      font-size: 0.92rem;
-    }
-
-    .card-body {
       padding: 20px;
+      flex-shrink: 0;
     }
 
-    .toolbar {
+    .sidebar h2 {
+      margin: 0 0 25px;
+      font-size: 22px;
+      text-align: center;
+      letter-spacing: 0.5px;
+    }
+
+    .sidebar a {
+      display: block;
+      color: white;
+      text-decoration: none;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+      border-radius: 10px;
+      transition: 0.2s ease;
+      font-size: 15px;
+    }
+
+    .sidebar a:hover,
+    .sidebar a.active {
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .main-content {
+      flex: 1;
+      padding: 24px;
+      overflow-x: hidden;
+    }
+
+    .page-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
       gap: 12px;
       flex-wrap: wrap;
-      margin-bottom: 16px;
+      margin-bottom: 20px;
     }
 
-    .toolbar-left,
-    .toolbar-right {
+    .page-header h1 {
+      margin: 0;
+      font-size: 28px;
+      color: #0f172a;
+    }
+
+    .page-header p {
+      margin: 6px 0 0;
+      color: #64748b;
+      font-size: 14px;
+    }
+
+    .header-actions {
       display: flex;
       gap: 10px;
       flex-wrap: wrap;
-      align-items: center;
     }
 
-    .form-control,
-    .form-select {
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 12px 14px;
-      font-size: 0.95rem;
+    .btn {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 16px;
+      font-size: 14px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: 0.2s ease;
+    }
+
+    .btn-primary {
+      background: #2563eb;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #1d4ed8;
+    }
+
+    .btn-secondary {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+
+    .btn-secondary:hover {
+      background: #cbd5e1;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+      padding: 20px;
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .toolbar input,
+    .toolbar select {
+      width: 100%;
+      padding: 11px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      font-size: 14px;
       outline: none;
       background: #fff;
     }
 
-    .form-control:focus,
-    .form-select:focus {
-      border-color: var(--primary);
+    .toolbar input:focus,
+    .toolbar select:focus {
+      border-color: #2563eb;
       box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
     }
 
-    .search-box {
-      width: 320px;
-      max-width: 100%;
-    }
-
     .table-wrap {
+      width: 100%;
       overflow-x: auto;
-      border-radius: 16px;
-      border: 1px solid var(--border);
+      border-radius: 14px;
+      border: 1px solid #e2e8f0;
     }
 
     table {
       width: 100%;
+      min-width: 950px;
       border-collapse: collapse;
-      min-width: 1100px;
       background: white;
+    }
+
+    thead {
+      background: #0f172a;
+      color: white;
     }
 
     th,
     td {
-      padding: 14px 16px;
-      border-bottom: 1px solid var(--border);
+      padding: 14px 12px;
       text-align: left;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 14px;
       vertical-align: top;
-      font-size: 0.94rem;
     }
 
-    th {
+    tbody tr:hover {
       background: #f8fafc;
-      font-size: 0.9rem;
-      color: #374151;
-      white-space: nowrap;
-    }
-
-    tr:hover td {
-      background: #f9fbff;
     }
 
     .badge {
       display: inline-block;
       padding: 6px 10px;
       border-radius: 999px;
-      font-size: 0.8rem;
+      font-size: 12px;
       font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.02em;
+      letter-spacing: 0.3px;
     }
 
-    .badge-login,
-    .badge-logout {
-      background: rgba(37, 99, 235, 0.12);
+    .badge-auth {
+      background: #dbeafe;
       color: #1d4ed8;
     }
 
-    .badge-create {
-      background: rgba(5, 150, 105, 0.12);
-      color: #047857;
+    .badge-users {
+      background: #ede9fe;
+      color: #6d28d9;
     }
 
-    .badge-update {
-      background: rgba(217, 119, 6, 0.12);
+    .badge-inventory {
+      background: #dcfce7;
+      color: #15803d;
+    }
+
+    .badge-borrow {
+      background: #fef3c7;
       color: #b45309;
     }
 
-    .badge-delete,
-    .badge-failed_login {
-      background: rgba(220, 38, 38, 0.12);
+    .badge-backup {
+      background: #fee2e2;
       color: #b91c1c;
     }
 
     .badge-default {
-      background: rgba(107, 114, 128, 0.12);
+      background: #e5e7eb;
       color: #374151;
     }
 
-    .module-badge {
-      display: inline-block;
-      padding: 6px 10px;
-      border-radius: 999px;
-      font-size: 0.8rem;
-      font-weight: 700;
-      background: #eef2ff;
-      color: #4338ca;
-      text-transform: uppercase;
-    }
-
-    .message {
-      margin-bottom: 16px;
-      padding: 12px 14px;
-      border-radius: 12px;
-      font-size: 0.92rem;
-      display: none;
-    }
-
-    .message.success {
-      display: block;
-      background: rgba(5, 150, 105, 0.12);
-      color: #065f46;
-      border: 1px solid rgba(5, 150, 105, 0.25);
-    }
-
-    .message.error {
-      display: block;
-      background: rgba(220, 38, 38, 0.12);
-      color: #991b1b;
-      border: 1px solid rgba(220, 38, 38, 0.25);
+    .muted {
+      color: #64748b;
+      font-size: 13px;
     }
 
     .empty-state {
       text-align: center;
-      padding: 24px;
-      color: var(--muted);
+      padding: 35px 20px;
+      color: #64748b;
+      font-size: 15px;
     }
 
-    .details-cell {
-      min-width: 260px;
-      line-height: 1.45;
+    .summary-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 18px;
     }
 
-    .time-cell {
-      white-space: nowrap;
+    .summary-box {
+      background: white;
+      border-radius: 14px;
+      padding: 18px;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
     }
 
-    @media (max-width: 760px) {
-      .logs-page {
-        padding: 14px;
+    .summary-box h3 {
+      margin: 0 0 8px;
+      font-size: 13px;
+      color: #64748b;
+      font-weight: 600;
+    }
+
+    .summary-box .value {
+      font-size: 26px;
+      font-weight: 800;
+      color: #0f172a;
+    }
+
+    @media (max-width: 1100px) {
+      .toolbar {
+        grid-template-columns: 1fr 1fr;
       }
 
-      .page-title h1 {
-        font-size: 1.55rem;
+      .summary-bar {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .layout {
+        flex-direction: column;
       }
 
-      .card-header,
-      .card-body {
+      .sidebar {
+        width: 100%;
+      }
+
+      .toolbar {
+        grid-template-columns: 1fr;
+      }
+
+      .summary-bar {
+        grid-template-columns: 1fr;
+      }
+
+      .main-content {
         padding: 16px;
-      }
-
-      .top-actions,
-      .toolbar-left,
-      .toolbar-right {
-        width: 100%;
-      }
-
-      .top-actions .btn,
-      .toolbar .btn,
-      .search-box,
-      .form-select {
-        width: 100%;
       }
     }
   </style>
 </head>
 <body>
-  <div class="logs-page">
-    <div class="topbar">
-      <div class="page-title">
-        <h1>Activity Logs</h1>
-        <p>Audit trail for logins, users, inventory, and borrow transactions.</p>
-        <div class="nav-links">
-          <a class="nav-link" href="dashboard.html">Dashboard</a>
-          <a class="nav-link" href="inventory.html">Inventory</a>
-          <a class="nav-link" href="borrow.html">Borrow</a>
-          <a class="nav-link" href="users.html">Users</a>
-          <a class="nav-link" href="logs.html">Logs</a>
+  <div class="layout">
+    <aside class="sidebar">
+      <h2>ICT Inventory</h2>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="inventory.html">Inventory</a>
+      <a href="borrow.html">Borrow</a>
+      <a href="users.html">Users</a>
+      <a href="logs.html" class="active">Activity Logs</a>
+      <a href="backup.html">Backup</a>
+      <a href="login.html" onclick="logout()">Logout</a>
+    </aside>
+
+    <main class="main-content">
+      <div class="page-header">
+        <div>
+          <h1>Activity Logs</h1>
+          <p>History ng mga galaw sa system tulad ng login, users, inventory, borrow, backup, at restore.</p>
+        </div>
+
+        <div class="header-actions">
+          <button class="btn btn-secondary" onclick="clearFilters()">Clear Filters</button>
+          <button class="btn btn-primary" onclick="loadLogs()">Refresh</button>
         </div>
       </div>
 
-      <div class="top-actions">
-        <div class="user-chip" id="currentUserChip">Checking session...</div>
-        <button class="btn btn-danger" id="logoutBtn">Logout</button>
+      <div class="summary-bar">
+        <div class="summary-box">
+          <h3>Total Logs</h3>
+          <div class="value" id="totalLogs">0</div>
+        </div>
+        <div class="summary-box">
+          <h3>Auth Logs</h3>
+          <div class="value" id="authLogs">0</div>
+        </div>
+        <div class="summary-box">
+          <h3>Inventory Logs</h3>
+          <div class="value" id="inventoryLogs">0</div>
+        </div>
+        <div class="summary-box">
+          <h3>Borrow Logs</h3>
+          <div class="value" id="borrowLogs">0</div>
+        </div>
       </div>
-    </div>
 
-    <div id="messageBox" class="message"></div>
-
-    <div class="card">
-      <div class="card-header">
-        <h2>System Audit Trail</h2>
-        <p>View the latest 500 recorded activities from the system.</p>
-      </div>
-
-      <div class="card-body">
+      <div class="card">
         <div class="toolbar">
-          <div class="toolbar-left">
-            <input
-              type="text"
-              id="searchInput"
-              class="form-control search-box"
-              placeholder="Search username, action, module, details..."
-            />
+          <input
+            type="text"
+            id="searchInput"
+            placeholder="Search username, action, details..."
+            oninput="applyFilters()"
+          />
 
-            <select id="actionFilter" class="form-select">
-              <option value="">All Actions</option>
-              <option value="LOGIN">LOGIN</option>
-              <option value="LOGOUT">LOGOUT</option>
-              <option value="CREATE">CREATE</option>
-              <option value="UPDATE">UPDATE</option>
-              <option value="DELETE">DELETE</option>
-              <option value="FAILED_LOGIN">FAILED_LOGIN</option>
-            </select>
+          <select id="moduleFilter" onchange="applyFilters()">
+            <option value="">All Modules</option>
+            <option value="AUTH">AUTH</option>
+            <option value="USERS">USERS</option>
+            <option value="INVENTORY">INVENTORY</option>
+            <option value="BORROW">BORROW</option>
+            <option value="BACKUP">BACKUP</option>
+          </select>
 
-            <select id="moduleFilter" class="form-select">
-              <option value="">All Modules</option>
-              <option value="AUTH">AUTH</option>
-              <option value="USERS">USERS</option>
-              <option value="INVENTORY">INVENTORY</option>
-              <option value="BORROW">BORROW</option>
-            </select>
-          </div>
+          <select id="actionFilter" onchange="applyFilters()">
+            <option value="">All Actions</option>
+            <option value="LOGIN">LOGIN</option>
+            <option value="LOGOUT">LOGOUT</option>
+            <option value="FAILED_LOGIN">FAILED_LOGIN</option>
+            <option value="CREATE">CREATE</option>
+            <option value="UPDATE">UPDATE</option>
+            <option value="DELETE">DELETE</option>
+            <option value="RETURN">RETURN</option>
+            <option value="RESTORE">RESTORE</option>
+          </select>
 
-          <div class="toolbar-right">
-            <button class="btn btn-secondary" id="refreshBtn">Refresh</button>
-          </div>
+          <select id="userFilter" onchange="applyFilters()">
+            <option value="">All Users</option>
+          </select>
         </div>
 
         <div class="table-wrap">
@@ -405,12 +373,12 @@
             <thead>
               <tr>
                 <th>ID</th>
+                <th>Date & Time</th>
                 <th>Username</th>
                 <th>Role</th>
                 <th>Action</th>
                 <th>Module</th>
                 <th>Details</th>
-                <th>Created At</th>
               </tr>
             </thead>
             <tbody id="logsTableBody">
@@ -421,73 +389,11 @@
           </table>
         </div>
       </div>
-    </div>
+    </main>
   </div>
 
   <script>
     let allLogs = [];
-
-    const currentUserChip = document.getElementById("currentUserChip");
-    const logoutBtn = document.getElementById("logoutBtn");
-    const messageBox = document.getElementById("messageBox");
-    const logsTableBody = document.getElementById("logsTableBody");
-    const searchInput = document.getElementById("searchInput");
-    const actionFilter = document.getElementById("actionFilter");
-    const moduleFilter = document.getElementById("moduleFilter");
-    const refreshBtn = document.getElementById("refreshBtn");
-
-    function showMessage(text, type = "success") {
-      messageBox.className = `message ${type}`;
-      messageBox.textContent = text;
-
-      setTimeout(() => {
-        messageBox.className = "message";
-        messageBox.textContent = "";
-      }, 3500);
-    }
-
-    function getActionBadge(action) {
-      const safe = String(action || "").toUpperCase();
-
-      if (safe === "LOGIN") {
-        return `<span class="badge badge-login">LOGIN</span>`;
-      }
-      if (safe === "LOGOUT") {
-        return `<span class="badge badge-logout">LOGOUT</span>`;
-      }
-      if (safe === "CREATE") {
-        return `<span class="badge badge-create">CREATE</span>`;
-      }
-      if (safe === "UPDATE") {
-        return `<span class="badge badge-update">UPDATE</span>`;
-      }
-      if (safe === "DELETE") {
-        return `<span class="badge badge-delete">DELETE</span>`;
-      }
-      if (safe === "FAILED_LOGIN") {
-        return `<span class="badge badge-failed_login">FAILED_LOGIN</span>`;
-      }
-
-      return `<span class="badge badge-default">${safe || "UNKNOWN"}</span>`;
-    }
-
-    function formatDateTime(value) {
-      if (!value) return "";
-      const date = new Date(value);
-
-      if (isNaN(date.getTime())) {
-        return value;
-      }
-
-      return date.toLocaleString("en-PH", {
-        year: "numeric",
-        month: "short",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit"
-      });
-    }
 
     async function checkSession() {
       try {
@@ -496,102 +402,193 @@
 
         if (!data.loggedIn) {
           window.location.href = "/login.html";
-          return;
         }
-
-        const role = data.user.role || "viewer";
-        currentUserChip.textContent = `${data.user.username} (${role})`;
-
-        if (role !== "admin") {
-          showMessage("Only admin can access activity logs.", "error");
-          setTimeout(() => {
-            window.location.href = "/dashboard.html";
-          }, 1500);
-          return;
-        }
-
-        await loadLogs();
       } catch (error) {
-        showMessage("Failed to verify session.", "error");
+        console.error("Session check error:", error);
+        window.location.href = "/login.html";
       }
     }
 
-    async function loadLogs() {
+    async function logout() {
       try {
-        logsTableBody.innerHTML = `<tr><td colspan="7" class="empty-state">Loading logs...</td></tr>`;
-
-        const res = await fetch("/api/activity-logs");
-        const data = await res.json();
-
-        if (!res.ok) {
-          throw new Error(data.error || "Failed to load activity logs.");
-        }
-
-        allLogs = data;
-        renderLogs(allLogs);
+        await fetch("/api/logout", { method: "POST" });
       } catch (error) {
-        logsTableBody.innerHTML = `<tr><td colspan="7" class="empty-state">Failed to load logs.</td></tr>`;
-        showMessage(error.message, "error");
+        console.error("Logout error:", error);
       }
     }
 
-    function renderLogs(logs) {
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function getModuleBadge(module) {
+      const value = String(module || "").toUpperCase();
+
+      if (value === "AUTH") return `<span class="badge badge-auth">${value}</span>`;
+      if (value === "USERS") return `<span class="badge badge-users">${value}</span>`;
+      if (value === "INVENTORY") return `<span class="badge badge-inventory">${value}</span>`;
+      if (value === "BORROW") return `<span class="badge badge-borrow">${value}</span>`;
+      if (value === "BACKUP") return `<span class="badge badge-backup">${value}</span>`;
+
+      return `<span class="badge badge-default">${escapeHtml(value || "N/A")}</span>`;
+    }
+
+    function formatDateTime(value) {
+      if (!value) return "N/A";
+
+      const date = new Date(value);
+      if (isNaN(date.getTime())) return value;
+
+      return date.toLocaleString();
+    }
+
+    function updateSummary(logs) {
+      const authLogs = logs.filter(log => String(log.module || "").toUpperCase() === "AUTH").length;
+      const inventoryLogs = logs.filter(log => String(log.module || "").toUpperCase() === "INVENTORY").length;
+      const borrowLogs = logs.filter(log => String(log.module || "").toUpperCase() === "BORROW").length;
+
+      document.getElementById("totalLogs").textContent = logs.length;
+      document.getElementById("authLogs").textContent = authLogs;
+      document.getElementById("inventoryLogs").textContent = inventoryLogs;
+      document.getElementById("borrowLogs").textContent = borrowLogs;
+    }
+
+    function populateUserFilter(logs) {
+      const userFilter = document.getElementById("userFilter");
+      const currentValue = userFilter.value;
+
+      const users = [...new Set(
+        logs
+          .map(log => String(log.username || "").trim())
+          .filter(Boolean)
+      )].sort((a, b) => a.localeCompare(b));
+
+      userFilter.innerHTML = `<option value="">All Users</option>` +
+        users.map(user => `<option value="${escapeHtml(user)}">${escapeHtml(user)}</option>`).join("");
+
+      userFilter.value = users.includes(currentValue) ? currentValue : "";
+    }
+
+    function renderTable(logs) {
+      const tbody = document.getElementById("logsTableBody");
+
       if (!logs.length) {
-        logsTableBody.innerHTML = `<tr><td colspan="7" class="empty-state">No activity logs found.</td></tr>`;
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" class="empty-state">No logs found.</td>
+          </tr>
+        `;
         return;
       }
 
-      logsTableBody.innerHTML = logs.map(log => `
+      tbody.innerHTML = logs.map(log => `
         <tr>
-          <td>${log.id ?? ""}</td>
-          <td>${log.username || ""}</td>
-          <td>${log.role || ""}</td>
-          <td>${getActionBadge(log.action)}</td>
-          <td><span class="module-badge">${log.module || ""}</span></td>
-          <td class="details-cell">${log.details || ""}</td>
-          <td class="time-cell">${formatDateTime(log.created_at)}</td>
+          <td>${escapeHtml(log.id)}</td>
+          <td>${escapeHtml(formatDateTime(log.created_at))}</td>
+          <td>${escapeHtml(log.username || "SYSTEM")}</td>
+          <td>${escapeHtml(log.role || "system")}</td>
+          <td><strong>${escapeHtml(log.action || "")}</strong></td>
+          <td>${getModuleBadge(log.module)}</td>
+          <td>${escapeHtml(log.details || "")}</td>
         </tr>
       `).join("");
     }
 
     function applyFilters() {
-      const searchTerm = searchInput.value.trim().toLowerCase();
-      const actionValue = actionFilter.value.trim().toUpperCase();
-      const moduleValue = moduleFilter.value.trim().toUpperCase();
+      const searchValue = document.getElementById("searchInput").value.toLowerCase().trim();
+      const moduleValue = document.getElementById("moduleFilter").value.toUpperCase();
+      const actionValue = document.getElementById("actionFilter").value.toUpperCase();
+      const userValue = document.getElementById("userFilter").value;
 
       const filtered = allLogs.filter(log => {
+        const username = String(log.username || "");
+        const action = String(log.action || "");
+        const module = String(log.module || "");
+        const details = String(log.details || "");
+        const role = String(log.role || "");
+
         const matchesSearch =
-          String(log.username || "").toLowerCase().includes(searchTerm) ||
-          String(log.role || "").toLowerCase().includes(searchTerm) ||
-          String(log.action || "").toLowerCase().includes(searchTerm) ||
-          String(log.module || "").toLowerCase().includes(searchTerm) ||
-          String(log.details || "").toLowerCase().includes(searchTerm) ||
-          String(log.id || "").toLowerCase().includes(searchTerm);
+          !searchValue ||
+          username.toLowerCase().includes(searchValue) ||
+          action.toLowerCase().includes(searchValue) ||
+          module.toLowerCase().includes(searchValue) ||
+          details.toLowerCase().includes(searchValue) ||
+          role.toLowerCase().includes(searchValue);
 
-        const matchesAction = !actionValue || String(log.action || "").toUpperCase() === actionValue;
-        const matchesModule = !moduleValue || String(log.module || "").toUpperCase() === moduleValue;
+        const matchesModule = !moduleValue || module.toUpperCase() === moduleValue;
+        const matchesAction = !actionValue || action.toUpperCase() === actionValue;
+        const matchesUser = !userValue || username === userValue;
 
-        return matchesSearch && matchesAction && matchesModule;
+        return matchesSearch && matchesModule && matchesAction && matchesUser;
       });
 
-      renderLogs(filtered);
+      updateSummary(filtered);
+      renderTable(filtered);
     }
 
-    searchInput.addEventListener("input", applyFilters);
-    actionFilter.addEventListener("change", applyFilters);
-    moduleFilter.addEventListener("change", applyFilters);
-    refreshBtn.addEventListener("click", loadLogs);
+    function clearFilters() {
+      document.getElementById("searchInput").value = "";
+      document.getElementById("moduleFilter").value = "";
+      document.getElementById("actionFilter").value = "";
+      document.getElementById("userFilter").value = "";
+      applyFilters();
+    }
 
-    logoutBtn.addEventListener("click", async () => {
+    async function loadLogs() {
+      const tbody = document.getElementById("logsTableBody");
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="7" class="empty-state">Loading logs...</td>
+        </tr>
+      `;
+
       try {
-        await fetch("/api/logout", { method: "POST" });
-        window.location.href = "/login.html";
+        let res = await fetch("/api/activity-logs");
+
+        if (res.status === 404) {
+          res = await fetch("/api/logs");
+        }
+
+        if (res.status === 401) {
+          window.location.href = "/login.html";
+          return;
+        }
+
+        if (res.status === 403) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="7" class="empty-state">Forbidden. Admin access only.</td>
+            </tr>
+          `;
+          return;
+        }
+
+        const data = await res.json();
+
+        if (!Array.isArray(data)) {
+          throw new Error("Invalid logs response");
+        }
+
+        allLogs = data;
+        populateUserFilter(allLogs);
+        applyFilters();
       } catch (error) {
-        showMessage("Logout failed.", "error");
+        console.error("Load logs error:", error);
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" class="empty-state">Failed to load logs.</td>
+          </tr>
+        `;
       }
-    });
+    }
 
     checkSession();
+    loadLogs();
   </script>
 </body>
 </html>
