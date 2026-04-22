@@ -320,6 +320,7 @@
         <div class="header-actions">
           <button class="btn btn-secondary" onclick="clearFilters()">Clear Filters</button>
           <button class="btn btn-primary" onclick="loadLogs()">Refresh</button>
+          <button class="btn btn-success" onclick="exportLogsCSV()">Export Excel</button>
         </div>
       </div>
 
@@ -598,6 +599,78 @@
 
     checkSession();
     loadLogs();
+    async function exportLogsCSV() {
+  try {
+    const response = await fetch("/api/activity-logs");
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch logs.");
+    }
+
+    const logs = await response.json();
+
+    if (!Array.isArray(logs) || logs.length === 0) {
+      alert("No logs found.");
+      return;
+    }
+
+    const headers = [
+      "ID",
+      "DATE & TIME",
+      "USERNAME",
+      "ROLE",
+      "ACTION",
+      "MODULE",
+      "DETAILS"
+    ];
+
+    const csvRows = [];
+    csvRows.push(headers.join(","));
+
+    logs.forEach(item => {
+      const row = [
+        item.id ?? "",
+        item.created_at ?? "",
+        item.username ?? "",
+        item.role ?? "",
+        item.action ?? "",
+        item.module ?? "",
+        item.details ?? ""
+      ].map(value => {
+        const safeValue = String(value).replace(/"/g, '""');
+        return `"${safeValue}"`;
+      });
+
+      csvRows.push(row.join(","));
+    });
+
+    const csvContent = "\uFEFF" + csvRows.join("\n");
+
+    const blob = new Blob([csvContent], {
+      type: "text/csv;charset=utf-8;"
+    });
+
+    const url = window.URL.createObjectURL(blob);
+
+    const now = new Date();
+    const fileName =
+      `activity_logs_${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}.csv`;
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    window.URL.revokeObjectURL(url);
+
+    alert("Logs exported successfully.");
+  } catch (error) {
+    console.error("Export logs error:", error);
+    alert("Failed to export logs.");
+  }
+}
   </script>
 </body>
 </html>
