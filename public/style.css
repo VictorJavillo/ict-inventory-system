@@ -1494,3 +1494,102 @@ input[type="month"]::-webkit-calendar-picker-indicator{
   font-style:italic !important;
   color:#000 !important;
 }
+.backup-card {
+  margin-bottom: 20px;
+}
+
+.backup-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.backup-top h3,
+.section-header h3 {
+  margin: 0 0 8px;
+}
+
+.backup-top p,
+.page-header p {
+  margin: 0;
+  color: #cbd5e1;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.empty-cell {
+  text-align: center;
+  padding: 18px;
+  color: #cbd5e1;
+}
+
+.error-cell {
+  color: #ffb4b4;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.sidebar-nav a {
+  display: block;
+  padding: 10px 14px;
+  border-radius: 10px;
+  text-decoration: none;
+  color: #e5e7eb;
+  transition: all 0.2s ease;
+}
+
+.sidebar-nav a:hover,
+.sidebar-nav a.active {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.page-header {
+  margin-bottom: 20px;
+}
+
+.page-header h1 {
+  margin-bottom: 6px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  padding: 14px 16px;
+  text-align: left;
+}
+
+.table thead th {
+  background: rgba(59, 130, 246, 0.85);
+  color: #fff;
+}
+
+.table tbody tr {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.04);
+}

@@ -1,6 +1,8 @@
 const express = require("express");
 const session = require("express-session");
 const path = require("path");
+const fs = require("fs");
+const { exec } = require("child_process");
 const { Pool } = require("pg");
 const bcrypt = require("bcryptjs");
 require("dotenv").config();
@@ -12,6 +14,12 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
+
+const BACKUP_DIR = path.join(__dirname, "backups");
+
+if (!fs.existsSync(BACKUP_DIR)) {
+  fs.mkdirSync(BACKUP_DIR, { recursive: true });
+}
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -25,6 +33,7 @@ app.use(
 );
 
 app.use(express.static(path.join(__dirname, "public")));
+app.use("/backups", express.static(BACKUP_DIR));
 
 /* =========================
    HELPERS
@@ -142,6 +151,18 @@ async function logActivity(user, action, module, details) {
   } catch (error) {
     console.error("Activity log error:", error.message);
   }
+}
+
+function formatFileSize(bytes) {
+  if (!bytes || bytes <= 0) return "0 KB";
+  return `${(bytes / 1024).toFixed(2)} KB`;
+}
+
+function getPgDumpPath() {
+  if (process.env.PG_DUMP_PATH && process.env.PG_DUMP_PATH.trim()) {
+    return process.env.PG_DUMP_PATH.trim();
+  }
+  return "C:\\Program Files\\PostgreSQL\\18\\bin\\pg_dump.exe";
 }
 
 /* =========================
@@ -364,12 +385,7 @@ app.post("/api/logout", async (req, res) => {
   const currentUser = req.session.user;
 
   if (currentUser) {
-    await logActivity(
-      currentUser,
-      "LOGOUT",
-      "AUTH",
-      "User logged out"
-    );
+    await logActivity(currentUser, "LOGOUT", "AUTH", "User logged out");
   }
 
   req.session.destroy(() => {
@@ -481,10 +497,7 @@ app.put("/api/users/:id", requireRole("admin"), async (req, res) => {
         `Updated user: ${user.username}, new role: ${role}, password reset: yes`
       );
     } else if (role) {
-      await pool.query(
-        `UPDATE users SET role = $1 WHERE id = $2`,
-        [role, id]
-      );
+      await pool.query(`UPDATE users SET role = $1 WHERE id = $2`, [role, id]);
 
       await logActivity(
         req.session.user,
@@ -495,10 +508,10 @@ app.put("/api/users/:id", requireRole("admin"), async (req, res) => {
     } else if (newPassword) {
       const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-      await pool.query(
-        `UPDATE users SET password = $1 WHERE id = $2`,
-        [hashedPassword, id]
-      );
+      await pool.query(`UPDATE users SET password = $1 WHERE id = $2`, [
+        hashedPassword,
+        id
+      ]);
 
       await logActivity(
         req.session.user,
@@ -895,6 +908,84 @@ app.get("/api/activity-logs", requireRole("admin"), async (req, res) => {
 });
 
 /* =========================
+   BACKUP ROUTES
+========================= */
+app.post("/api/backup", requireRole("admin"), async (req, res) => {
+  try {
+    if (!process.env.DATABASE_URL) {
+      return res.status(500).json({ error: "DATABASE_URL is not configured." });
+    }
+
+    const pgDumpPath = getPgDumpPath();
+
+    if (!fs.existsSync(pgDumpPath)) {
+      return res.status(500).json({
+        error: `pg_dump not found at: ${pgDumpPath}`
+      });
+    }
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const backupFileName = `ict_inventory_backup_${timestamp}.sql`;
+    const backupFilePath = path.join(BACKUP_DIR, backupFileName);
+
+    const command = `"${pgDumpPath}" --dbname="${process.env.DATABASE_URL}" --file="${backupFilePath}"`;
+
+    exec(command, async (error, stdout, stderr) => {
+      if (error) {
+        console.error("Backup error:", error.message);
+        console.error("Backup stderr:", stderr);
+        return res.status(500).json({
+          error: "Backup failed.",
+          details: stderr || error.message
+        });
+      }
+
+      await logActivity(
+        req.session.user,
+        "CREATE",
+        "BACKUP",
+        `Created database backup: ${backupFileName}`
+      );
+
+      res.json({
+        success: true,
+        message: "Backup created successfully.",
+        file: backupFileName
+      });
+    });
+  } catch (error) {
+    console.error("Create backup error:", error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/api/backups", requireRole("admin"), async (req, res) => {
+  try {
+    const files = fs
+      .readdirSync(BACKUP_DIR)
+      .filter((file) => file.toLowerCase().endsWith(".sql"))
+      .map((file) => {
+        const filePath = path.join(BACKUP_DIR, file);
+        const stats = fs.statSync(filePath);
+
+        return {
+          name: file,
+          createdAt: stats.birthtime,
+          createdAtText: new Date(stats.birthtime).toLocaleString(),
+          size: formatFileSize(stats.size)
+        };
+      })
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .map(({ createdAt, ...rest }) => rest);
+
+    res.json(files);
+  } catch (error) {
+    console.error("Fetch backups error:", error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/* =========================
    TEST DB
 ========================= */
 app.get("/api/test-db", async (req, res) => {
@@ -915,5 +1006,6 @@ app.get("/api/test-db", async (req, res) => {
 initializeDatabase().then(() => {
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+    console.log(`Backup folder ready at: ${BACKUP_DIR}`);
   });
 });

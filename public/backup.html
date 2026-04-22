@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Backup Management | ICT Inventory</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h2>ICT Inventory</h2>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="dashboard.html">Dashboard</a>
+        <a href="inventory.html">Inventory</a>
+        <a href="borrow.html">Borrow</a>
+        <a href="users.html">Users</a>
+        <a href="logs.html">Logs</a>
+        <a href="backup.html" class="active">Backup</a>
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <div class="page-header">
+        <h1>Backup Management</h1>
+        <p>Create and download system backups.</p>
+      </div>
+
+      <div class="card backup-card">
+        <div class="backup-top">
+          <div>
+            <h3>Database Backup</h3>
+            <p>Create a full backup of your ICT Inventory database.</p>
+          </div>
+          <button class="btn btn-primary" onclick="createBackup()">Create Backup</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-header">
+          <h3>Available Backups</h3>
+          <button class="btn btn-secondary" onclick="loadBackups()">Refresh</button>
+        </div>
+
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Filename</th>
+                <th>Date Created</th>
+                <th>Size</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="backupTableBody">
+              <tr>
+                <td colspan="4" class="empty-cell">Loading backups...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    async function createBackup() {
+      const btn = document.querySelector('.backup-top .btn-primary');
+      const originalText = btn.textContent;
+
+      try {
+        btn.disabled = true;
+        btn.textContent = 'Creating...';
+
+        const res = await fetch('/api/backup', {
+          method: 'POST'
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed to create backup');
+        }
+
+        alert(data.message || 'Backup created successfully.');
+        loadBackups();
+      } catch (err) {
+        console.error(err);
+        alert(err.message || 'Error creating backup.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    }
+
+    async function loadBackups() {
+      const tbody = document.getElementById('backupTableBody');
+
+      try {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="4" class="empty-cell">Loading backups...</td>
+          </tr>
+        `;
+
+        const res = await fetch('/api/backups');
+        const backups = await res.json();
+
+        if (!res.ok) {
+          throw new Error(backups.error || 'Failed to load backups');
+        }
+
+        if (!Array.isArray(backups) || backups.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="4" class="empty-cell">No backups found.</td>
+            </tr>
+          `;
+          return;
+        }
+
+        tbody.innerHTML = backups.map(file => `
+          <tr>
+            <td>${file.name}</td>
+            <td>${file.createdAtText}</td>
+            <td>${file.size}</td>
+            <td>
+              <a href="/backups/${encodeURIComponent(file.name)}" download class="btn btn-sm btn-primary">
+                Download
+              </a>
+            </td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        console.error(err);
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="4" class="empty-cell error-cell">Failed to load backups.</td>
+          </tr>
+        `;
+      }
+    }
+
+    loadBackups();
+  </script>
+</body>
+</html>
