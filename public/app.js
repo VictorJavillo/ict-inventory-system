@@ -1502,3 +1502,85 @@ document.addEventListener("DOMContentLoaded", async () => {
     await loadDashboard();
   }
 });
+async function exportInventoryCSV() {
+  try {
+    const response = await fetch("/api/inventory");
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch inventory data.");
+    }
+
+    const inventory = await response.json();
+
+    if (!Array.isArray(inventory) || inventory.length === 0) {
+      alert("No inventory data found.");
+      return;
+    }
+
+    const headers = [
+      "NR",
+      "CATEGORY",
+      "DESCRIPTION",
+      "SERIAL NUMBER",
+      "PROPERTY NUMBER",
+      "STATUS",
+      "DATE ISSUED",
+      "UNIT",
+      "OS",
+      "WINDOWS TYPE",
+      "MS OFFICE",
+      "ANTIVIRUS",
+      "REMARKS"
+    ];
+
+    const csvRows = [];
+    csvRows.push(headers.join(","));
+
+    inventory.forEach(item => {
+      const row = [
+        item.nr ?? "",
+        item.category ?? "",
+        item.description ?? "",
+        item.serial_number ?? "",
+        item.property_number ?? "",
+        item.status ?? "",
+        item.date_issued ?? "",
+        item.unit ?? "",
+        item.os ?? "",
+        item.windows_type ?? "",
+        item.ms_office ?? "",
+        item.antivirus ?? "",
+        item.remarks ?? ""
+      ].map(value => {
+        const safeValue = String(value).replace(/"/g, '""');
+        return `"${safeValue}"`;
+      });
+
+      csvRows.push(row.join(","));
+    });
+
+    const csvContent = "\uFEFF" + csvRows.join("\n");
+    const blob = new Blob([csvContent], {
+      type: "text/csv;charset=utf-8;"
+    });
+
+    const url = window.URL.createObjectURL(blob);
+
+    const now = new Date();
+    const fileName = `inventory_report_${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}.csv`;
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    window.URL.revokeObjectURL(url);
+
+    alert("Inventory exported successfully.");
+  } catch (error) {
+    console.error("Export inventory error:", error);
+    alert("Failed to export inventory.");
+  }
+}
