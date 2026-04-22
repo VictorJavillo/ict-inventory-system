@@ -1584,3 +1584,75 @@ async function exportInventoryCSV() {
     alert("Failed to export inventory.");
   }
 }
+async function exportBorrowCSV() {
+  try {
+    const response = await fetch("/api/borrows");
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch borrow data.");
+    }
+
+    const borrows = await response.json();
+
+    if (!Array.isArray(borrows) || borrows.length === 0) {
+      alert("No borrow records found.");
+      return;
+    }
+
+    const headers = [
+      "BORROWER NAME",
+      "OFFICE / UNIT",
+      "EQUIPMENT",
+      "QUANTITY",
+      "DATE BORROWED",
+      "DATE RETURN",
+      "PURPOSE",
+      "REMARKS"
+    ];
+
+    const csvRows = [];
+    csvRows.push(headers.join(","));
+
+    borrows.forEach(item => {
+      const row = [
+        item.borrower_name ?? "",
+        item.office_unit ?? "",
+        item.equipment ?? "",
+        item.quantity ?? "",
+        item.date_borrowed ?? "",
+        item.date_return ?? "",
+        item.purpose ?? "",
+        item.remarks ?? ""
+      ].map(value => {
+        const safeValue = String(value).replace(/"/g, '""');
+        return `"${safeValue}"`;
+      });
+
+      csvRows.push(row.join(","));
+    });
+
+    const csvContent = "\uFEFF" + csvRows.join("\n");
+    const blob = new Blob([csvContent], {
+      type: "text/csv;charset=utf-8;"
+    });
+
+    const url = window.URL.createObjectURL(blob);
+
+    const now = new Date();
+    const fileName = `borrow_report_${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}.csv`;
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    window.URL.revokeObjectURL(url);
+
+    alert("Borrow records exported successfully.");
+  } catch (error) {
+    console.error("Export borrow error:", error);
+    alert("Failed to export borrow records.");
+  }
+}
