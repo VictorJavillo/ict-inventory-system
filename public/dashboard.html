@@ -3,24 +3,37 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DCEISO Inventory Dashboard</title>
+  <title>ICT Inventory | Dashboard</title>
+
+  <link rel="icon" type="image/png" href="images/paf-logo-left.png" />
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+
 <body>
+  <div id="appLoader" class="app-loader">
+    <div class="loader-box">
+      <div class="loader-logo">ICT</div>
+      <div class="loader-title">ICT Inventory System</div>
+      <div class="loader-subtitle">Loading dashboard, please wait...</div>
+      <div class="loader-bar"><span></span></div>
+    </div>
+  </div>
+
   <div class="layout">
     <aside class="sidebar">
-      <div class="brand">DCEISO <span>Inventory</span></div>
-      <div class="subbrand">for future reference</div>
+      <div class="brand">ICT <span>Inventory</span></div>
+      <div class="subbrand">Advanced Local System</div>
 
       <nav class="menu">
-        <a href="dashboard.html" class="active">Dashboard</a>
-        <a href="inventory.html">Inventory</a>
-        <a href="borrow.html">Borrowed Page</a>
-        <a href="users.html">Users</a>
-        <a href="logs.html">Logs</a>
-        <a href="backup.html">Backup</a>
-        <a href="#" onclick="logout()">Logout</a>
+        <a href="dashboard.html" class="active" data-nav="dashboard">Dashboard</a>
+        <a href="inventory.html" data-nav="inventory">Inventory</a>
+        <a href="borrow.html" data-nav="borrow">Borrow Page</a>
+        <a href="users.html" data-nav="users">Users</a>
+        <a href="logs.html" data-nav="logs">Logs</a>
+        <a href="backup.html" data-nav="backup">Backup</a>
+        <a href="settings.html" data-nav="settings">Settings</a>
+        <a href="#" onclick="logout()" data-nav="logout">Logout</a>
       </nav>
     </aside>
 
@@ -68,35 +81,55 @@
       </div>
 
       <div class="two-col dashboard-charts">
-        <div class="card chart-card">
-          <div class="section-title">Status Graph</div>
-          <div class="small">Click the bars to view inside records.</div>
-          <div class="chart-box">
+        <div class="card chart-card premium-click-card">
+          <div class="chart-title-row">
+            <div>
+              <div class="section-title">Status Graph</div>
+              <div class="small">Click the bars to view inside records.</div>
+            </div>
+            <span class="click-pill">Clickable</span>
+          </div>
+
+          <div class="chart-box clickable-chart-box">
             <canvas id="statusChart"></canvas>
           </div>
         </div>
 
-        <div class="card chart-card">
-          <div class="section-title">License Pie Chart</div>
-          <div class="small">Click the pie slices to view inside records.</div>
-          <div class="chart-box">
+        <div class="card chart-card premium-click-card">
+          <div class="chart-title-row">
+            <div>
+              <div class="section-title">License Pie Chart</div>
+              <div class="small">Click the pie slices to view inside records.</div>
+            </div>
+            <span class="click-pill">Clickable</span>
+          </div>
+
+          <div class="chart-box clickable-chart-box">
             <canvas id="licenseChart"></canvas>
           </div>
         </div>
       </div>
 
-      <div class="card chart-card mt-16">
-        <div class="section-title">Category Distribution</div>
-        <div class="small">Click the bars to view records by category.</div>
-        <div class="chart-box">
+      <div class="card chart-card mt-16 premium-click-card">
+        <div class="chart-title-row">
+          <div>
+            <div class="section-title">Category Distribution</div>
+            <div class="small">Click the bars to view records by category.</div>
+          </div>
+          <span class="click-pill">Clickable</span>
+        </div>
+
+        <div class="chart-box clickable-chart-box category-chart-box">
           <canvas id="categoryChart"></canvas>
         </div>
       </div>
 
-      <div class="card table-wrap dashboard-table-card">
+      <div class="card table-wrap dashboard-table-card mt-16">
         <div class="table-header-bar">
-          <div class="section-title">Recent Inventory Records</div>
-          <div class="small">Latest 10 records from inventory.</div>
+          <div>
+            <div class="section-title">Recent Inventory Records</div>
+            <div class="small">Latest 10 records from inventory.</div>
+          </div>
         </div>
 
         <div class="table-wrapper">
@@ -109,6 +142,7 @@
                 <th>Serial Number</th>
                 <th>Property Number</th>
                 <th>Status</th>
+                <th>Date Issued</th>
                 <th>Unit</th>
                 <th>OS</th>
                 <th>MS Office</th>
@@ -116,9 +150,10 @@
                 <th>Remarks</th>
               </tr>
             </thead>
+
             <tbody id="dashboardTableBody">
               <tr>
-                <td colspan="11" class="empty-state">No inventory records found.</td>
+                <td colspan="12" class="empty-state">No inventory records found.</td>
               </tr>
             </tbody>
           </table>
@@ -127,22 +162,33 @@
     </main>
   </div>
 
-  <div class="modal" id="chartModal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2 id="chartDetailsTitle">Chart Details</h2>
-        <button type="button" class="close-btn" onclick="closeModal('chartModal')">&times;</button>
+  <!-- Premium Clickable Graph Records Modal -->
+  <div id="chartModal" class="modal chart-details-modal">
+    <div class="modal-content chart-modal-content">
+      <div class="chart-modal-header">
+        <div>
+          <div class="modal-kicker">Filtered Graph Records</div>
+          <h2 id="chartDetailsTitle">Records</h2>
+        </div>
+
+        <button type="button" class="chart-modal-close" onclick="closeModal('chartModal')">
+          &times;
+        </button>
       </div>
 
-      <div class="table-wrapper">
-        <table class="inventory-table">
+      <div class="chart-modal-note">
+        These are the inventory records under the chart item you clicked.
+      </div>
+
+      <div class="chart-modal-table-wrap">
+        <table class="inventory-table chart-details-table">
           <thead>
             <tr>
               <th>NR</th>
               <th>Category</th>
               <th>Description</th>
-              <th>Serial Number</th>
-              <th>Property Number</th>
+              <th>Serial</th>
+              <th>Property</th>
               <th>Status</th>
               <th>Unit</th>
               <th>OS</th>
@@ -151,9 +197,10 @@
               <th>Remarks</th>
             </tr>
           </thead>
+
           <tbody id="chartDetailsBody">
             <tr>
-              <td colspan="11" class="empty-state">No details available.</td>
+              <td colspan="11" class="empty-state">Click a graph item to view records.</td>
             </tr>
           </tbody>
         </table>
@@ -162,9 +209,5 @@
   </div>
 
   <script src="app.js"></script>
-  <script>
-    checkSession();
-    loadDashboard();
-  </script>
 </body>
 </html>

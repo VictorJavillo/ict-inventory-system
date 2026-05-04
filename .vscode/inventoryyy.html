@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inventory</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">ICT <span>Inventory</span></div>
+      <div class="subbrand">Advanced Local System</div>
+
+      <nav class="menu">
+        <a href="dashboard.html">Dashboard</a>
+        <a href="inventory.html" class="active">Inventory</a>
+        <a href="borrow.html">Borrow Page</a>
+        <a href="users.html">Users</a>
+        <a href="logs.html">Logs</a>
+        <a href="backup.html">Backup</a>
+        <a href="#" onclick="logout()">Logout</a>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div>
+          <div class="title">Inventory</div>
+          <div class="subtitle">Add, edit, delete, search, and print equipment records</div>
+        </div>
+
+        <div class="actions top-actions">
+          <button class="btn btn-primary" type="button" onclick="openInventoryModal()">Add Equipment</button>
+          <button class="btn btn-success" type="button" onclick="printInventoryReport()">Print Inventory</button>
+          <button class="btn btn-success" onclick="exportInventoryCSV()">Export Excel</button>
+        </div>
+      </div>
+
+      <div class="card keep-print signatory-card mb-20">
+        <div class="section-title">Print Signatories</div>
+
+        <div class="form-grid signatory-grid">
+          <div>
+            <label for="preparedName">Prepared By:</label>
+            <select id="preparedName" onchange="selectPrepared()">
+              <option value="">Select</option>
+              <option value="batain">Sgt Ma Loise Abbie O Batain</option>
+              <option value="camarillo">Sgt Robert Jhon R Camarillo</option>
+              <option value="bantang">A1C Ian Gabriel B Bantang</option>
+              <option value="javillo">AM Victor D Javillo</option>
+              <option value="bogac">AW Love Joy S Bog-ac</option>
+              <option value="pacleb">AM Jayson Carl W Pacleb</option>
+              <option value="domingo">AM Joshua M Domingo</option>
+              <option value="palomo">AM Alexander C Palomo</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="checkedName">Checked By:</label>
+            <select id="checkedName" onchange="selectChecked()">
+              <option value="">Select</option>
+              <option value="liwagan">MAJ MAYLENE B LIW-AGAN</option>
+              <option value="calimbas">CPT ROLAND JAMES A CALIMBAS</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-20">
+        <div class="filter-container">
+          <select id="filterCategory" onchange="applyFilter()">
+            <option value="">All Category</option>
+            <option value="Laptop">Laptop</option>
+            <option value="Desktop Computer">Desktop Computer</option>
+            <option value="Printer">Printer</option>
+            <option value="Mobile Phone">Mobile Phone</option>
+            <option value="Handheld Radio">Handheld Radio</option>
+            <option value="Television">Television</option>
+            <option value="Base Radio">Base Radio</option>
+          </select>
+
+          <select id="filterUnit" onchange="applyFilter()">
+            <option value="">All Office</option>
+            <option value="CEISO">CEISO</option>
+            <option value="ODO">ODO</option>
+            <option value="OWSM">OWSM</option>
+            <option value="PAO">PAO</option>
+            <option value="ODI">ODI</option>
+            <option value="WIGO">WIGO</option>
+            <option value="OESPA">OESPA</option>
+            <option value="WOC">WOC</option>
+            <option value="WADJ">WADJ</option>
+            <option value="ODL">ODL</option>
+            <option value="OFM">OFM</option>
+            <option value="HAS">HAS</option>
+            <option value="WSO">WSO</option>
+            <option value="ODP">ODP</option>
+            <option value="SAO">SAO</option>
+            <option value="581ACWG">581ACWG</option>
+            <option value="582ACWG">582ACWG</option>
+            <option value="583ACWG">583ACWG</option>
+            <option value="584ACWG">584ACWG</option>
+            <option value="586ACWG">586MCRS</option>
+            <option value="588RMSS">588RMSS</option>
+            <option value="589ABMS">589ABMS</option>
+          </select>
+
+          <input
+            type="text"
+            id="searchInput"
+            placeholder="Search inventory..."
+            oninput="filterInventory()"
+          />
+
+          <select id="searchColumn" onchange="filterInventory()">
+            <option value="all">All Columns</option>
+            <option value="category">Category</option>
+            <option value="description">Description</option>
+            <option value="serial_number">Serial Number</option>
+            <option value="property_number">Property Number</option>
+            <option value="status">Status</option>
+            <option value="date_issued">Date Issued</option>
+            <option value="unit">Unit</option>
+            <option value="os">OS</option>
+            <option value="windows_type">Windows Type</option>
+            <option value="ms_office">MS Office</option>
+            <option value="antivirus">Antivirus</option>
+            <option value="remarks">Remarks</option>
+          </select>
+
+          <button type="button" class="btn btn-gray" onclick="resetFilter()">Reset</button>
+        </div>
+      </div>
+
+      <div class="card table-wrap">
+        <div class="table-header-bar">
+          <div class="section-title">Equipment List</div>
+        </div>
+
+        <div class="table-wrapper">
+          <table class="inventory-table">
+            <thead>
+              <tr>
+                <th>NR</th>
+                <th>Category</th>
+                <th>Description</th>
+                <th>Serial Number</th>
+                <th>Property Number</th>
+                <th>Status</th>
+                <th>Date Issued</th>
+                <th>Unit</th>
+                <th>OS Licensed/Unlicensed</th>
+                <th>Windows Type</th>
+                <th>MS Office</th>
+                <th>Antivirus</th>
+                <th>Remarks</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="inventoryTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="printArea" class="print-area">
+        <div class="report-page">
+          <div class="report-header">
+            <div class="header-container">
+              <img src="images/paf-logo-left.png" class="header-logo-left" alt="Left Logo" />
+
+              <div class="header-text">
+                <div class="flight-plan-top">
+                  Flight Plan 2040 Vision: A Credible and Agile Air Force Adaptable to Modern Warfare
+                  and Responsive to National and Regional Security and Development.
+                </div>
+
+                <div class="header-title">PHILIPPINE AIR FORCE</div>
+                <div class="header-sub">580TH AIRCRAFT CONTROL AND WARNING WING</div>
+                <div class="header-sub">DIRECTORATE FOR COMMUNICATIONS, ELECTRONICS AND INFORMATION SYSTEMS OFFICE</div>
+                <div class="header-sub">Wallace Air Station, City of San Fernando, La Union</div>
+              </div>
+
+              <img src="images/paf-logo-right.png" class="header-logo-right" alt="Right Logo" />
+            </div>
+          </div>
+
+          <h3 class="print-report-title">ICT INVENTORY REPORT</h3>
+          <p class="print-date-line">Date Printed: <span id="printDate"></span></p>
+
+          <table class="print-table">
+            <thead>
+              <tr>
+                <th>NR</th>
+                <th>Category</th>
+                <th>Description</th>
+                <th>Serial</th>
+                <th>Property</th>
+                <th>Status</th>
+                <th>Date Issued</th>
+                <th>Unit</th>
+                <th>OS</th>
+                <th>Windows Type</th>
+                <th>MS Office</th>
+                <th>Antivirus</th>
+                <th>Remarks</th>
+              </tr>
+            </thead>
+            <tbody id="printTableBody"></tbody>
+          </table>
+
+          <div class="signature-section">
+            <div class="signature-box">
+              <div class="signature-label">Prepared by:</div>
+
+              <div class="signature-stack">
+                <img id="preparedSignatureImg" class="sig-img" alt="Prepared Signature" />
+                <div class="sig-name" id="preparedPrintName"></div>
+
+                <div class="rank-line">
+                  <span id="preparedPrintRank"></span>
+                  <span>PAF</span>
+                </div>
+
+                <div class="sig-position" id="preparedPrintPosition"></div>
+              </div>
+            </div>
+
+            <div class="signature-box">
+              <div class="signature-label">Checked by:</div>
+
+              <div class="signature-stack">
+                <img id="checkedSignatureImg" class="sig-img" alt="Checked Signature" />
+                <div class="sig-name" id="checkedPrintName"></div>
+
+                <div class="rank-line">
+                  <span id="checkedPrintRank"></span>
+                  <span>PAF</span>
+                </div>
+
+                <div class="sig-position" id="checkedPrintPosition"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="print-footer">
+            <img src="images/footer.png" class="footer-image" alt="Footer" />
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal" id="inventoryModal">
+    <div class="modal-content inventory-modal-content">
+      <div class="modal-header">
+        <h2 id="modalTitle">Add Equipment</h2>
+        <button class="close-btn" type="button" onclick="closeModal('inventoryModal')">&times;</button>
+      </div>
+
+      <form id="inventoryForm">
+        <input type="hidden" id="editId" />
+
+        <div class="form-grid">
+          <div>
+            <label for="category">Category</label>
+            <select id="category" required>
+              <option value="">Select Category</option>
+              <option value="Laptop">Laptop</option>
+              <option value="Desktop Computer">Desktop Computer</option>
+              <option value="Printer">Printer</option>
+              <option value="Mobile Phone">Mobile Phone</option>
+              <option value="Handheld Radio">Handheld Radio</option>
+              <option value="Television">Television</option>
+              <option value="Base Radio">Base Radio</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="description">Description</label>
+            <input type="text" id="description" class="input" required />
+          </div>
+
+          <div>
+            <label for="serial_number">Serial Number</label>
+            <input type="text" id="serial_number" class="input" required />
+          </div>
+
+          <div>
+            <label for="property_number">Property Number</label>
+            <input type="text" id="property_number" class="input" required />
+          </div>
+
+          <div>
+            <label for="status">Status</label>
+            <select id="status" required>
+              <option value="NOPNL">NOPNL</option>
+              <option value="OPNL">OPNL</option>
+            </select>
+          </div>
+
+          <div class="date-field">
+            <label for="date_issued">Date Issued</label>
+            <div class="date-wrapper">
+              <input type="month" id="date_issued" class="modern-date-input" required />
+            </div>
+          </div>
+
+          <div>
+            <label for="unit">Unit</label>
+            <select id="unit" required>
+              <option value="">Select Unit</option>
+              <option value="CEISO">CEISO</option>
+              <option value="ODO">ODO</option>
+              <option value="OWSM">OWSM</option>
+              <option value="PAO">PAO</option>
+              <option value="ODI">ODI</option>
+              <option value="WIGO">WIGO</option>
+              <option value="OESPA">OESPA</option>
+              <option value="WOC">WOC</option>
+              <option value="WADJ">WADJ</option>
+              <option value="ODL">ODL</option>
+              <option value="OFM">OFM</option>
+              <option value="HAS">HAS</option>
+              <option value="WSO">WSO</option>
+              <option value="ODP">ODP</option>
+              <option value="SAO">SAO</option>
+              <option value="581ACWG">581ACWG</option>
+              <option value="582ACWG">582ACWG</option>
+              <option value="583ACWG">583ACWG</option>
+              <option value="584ACWG">584ACWG</option>
+              <option value="586ACWG">586MCRS</option>
+              <option value="588RMSS">588RMSS</option>
+              <option value="589ABMS">589ABMS</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="office_input">Office</label>
+            <input
+              type="text"
+              id="office_input"
+              class="input"
+              placeholder="Enter office"
+            />
+          </div>
+
+          <div>
+            <label for="os">OS Licensed/Unlicensed</label>
+            <select id="os" required>
+              <option value="">Select</option>
+              <option value="Retail Licensed">Retail Licensed</option>
+              <option value="KMS Unlicensed">KMS Unlicensed</option>
+              <option value="N/A">N/A</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="windows_type">Windows Type</label>
+            <select id="windows_type" required>
+              <option value="">Select Windows Type</option>
+              <option value="Windows 7">Windows 7</option>
+              <option value="Windows 8">Windows 8</option>
+              <option value="Windows 10">Windows 10</option>
+              <option value="Windows 10 Pro">Windows 10 Pro</option>
+              <option value="Windows 11">Windows 11</option>
+              <option value="Windows 11 Pro">Windows 11 Pro</option>
+              <option value="N/A">N/A</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="ms_office">MS Office</label>
+            <select id="ms_office" required>
+              <option value="">Select</option>
+              <option value="Retail Licensed">Retail Licensed</option>
+              <option value="KMS Unlicensed">KMS Unlicensed</option>
+              <option value="N/A">N/A</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="antivirus">Antivirus</label>
+            <select id="antivirus" required>
+              <option value="">Select Antivirus</option>
+              <option value="Licensed">Licensed</option>
+              <option value="Unlicensed">Unlicensed</option>
+              <option value="Windows Defender">Windows Defender</option>
+              <option value="MCAFEE">MCAFEE</option>
+              <option value="360 TOTAL SECURITY">360 TOTAL SECURITY</option>
+              <option value="N/A">N/A</option>
+            </select>
+          </div>
+
+          <div class="full">
+            <label for="remarks">Remarks</label>
+            <textarea id="remarks" rows="4"></textarea>
+          </div>
+        </div>
+
+        <div class="actions mt-16">
+          <button type="submit" class="btn btn-primary">Save</button>
+          <button type="button" class="btn btn-gray" onclick="closeModal('inventoryModal')">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

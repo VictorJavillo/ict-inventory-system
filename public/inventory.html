@@ -6,6 +6,7 @@
   <title>Inventory</title>
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
   <div class="layout">
     <aside class="sidebar">
@@ -19,6 +20,7 @@
         <a href="users.html">Users</a>
         <a href="logs.html">Logs</a>
         <a href="backup.html">Backup</a>
+        <a href="settings.html">Settings</a>
         <a href="#" onclick="logout()">Logout</a>
       </nav>
     </aside>
@@ -27,13 +29,13 @@
       <div class="topbar">
         <div>
           <div class="title">Inventory</div>
-          <div class="subtitle">Add, edit, delete, search, and print equipment records</div>
+          <div class="subtitle">Premium smart search, connected filters, print, export, and equipment records</div>
         </div>
 
         <div class="actions top-actions">
           <button class="btn btn-primary" type="button" onclick="openInventoryModal()">Add Equipment</button>
           <button class="btn btn-success" type="button" onclick="printInventoryReport()">Print Inventory</button>
-          <button class="btn btn-success" onclick="exportInventoryCSV()">Export Excel</button>
+          <button class="btn btn-success" type="button" onclick="exportInventoryCSV()">Export Excel</button>
         </div>
       </div>
 
@@ -69,7 +71,7 @@
 
       <div class="card mb-20">
         <div class="filter-container">
-          <select id="filterCategory" onchange="applyFilter()">
+          <select id="filterCategory" onchange="applyInventoryFilters()">
             <option value="">All Category</option>
             <option value="Laptop">Laptop</option>
             <option value="Desktop Computer">Desktop Computer</option>
@@ -80,8 +82,8 @@
             <option value="Base Radio">Base Radio</option>
           </select>
 
-          <select id="filterUnit" onchange="applyFilter()">
-            <option value="">All Office</option>
+          <select id="filterUnit" onchange="applyInventoryFilters()">
+            <option value="">All Office / Unit</option>
             <option value="CEISO">CEISO</option>
             <option value="ODO">ODO</option>
             <option value="OWSM">OWSM</option>
@@ -101,7 +103,7 @@
             <option value="582ACWG">582ACWG</option>
             <option value="583ACWG">583ACWG</option>
             <option value="584ACWG">584ACWG</option>
-            <option value="586ACWG">586MCRS</option>
+            <option value="586MCRS">586MCRS</option>
             <option value="588RMSS">588RMSS</option>
             <option value="589ABMS">589ABMS</option>
           </select>
@@ -109,26 +111,31 @@
           <input
             type="text"
             id="searchInput"
-            placeholder="Search inventory..."
-            oninput="filterInventory()"
+            placeholder="Smart search: Dell CEISO Windows 11..."
+            oninput="applyInventoryFilters()"
           />
 
-          <select id="searchColumn" onchange="filterInventory()">
-            <option value="all">All Columns</option>
+          <select id="searchColumn" onchange="applyInventoryFilters()">
+            <option value="all">Search In: All Columns</option>
             <option value="category">Category</option>
             <option value="description">Description</option>
             <option value="serial_number">Serial Number</option>
             <option value="property_number">Property Number</option>
             <option value="status">Status</option>
-            <option value="date_issued">Date Issued</option>
-            <option value="unit">Unit</option>
-            <option value="os">OS</option>
+            <option value="date_issued_display">Date Issued</option>
+            <option value="unit_only">Unit</option>
+            <option value="office">Office</option>
+            <option value="os">OS Licensed</option>
             <option value="windows_type">Windows Type</option>
             <option value="ms_office">MS Office</option>
             <option value="antivirus">Antivirus</option>
             <option value="remarks">Remarks</option>
           </select>
-
+          
+          <select id="printMode">
+  <option value="table_summary">Print Table + Grand Total</option>
+  <option value="grand_only">Print Grand Total Only</option>
+</select>
           <button type="button" class="btn btn-gray" onclick="resetFilter()">Reset</button>
         </div>
       </div>
@@ -136,6 +143,7 @@
       <div class="card table-wrap">
         <div class="table-header-bar">
           <div class="section-title">Equipment List</div>
+          <div class="small">Connected filters: Category + Office/Unit + Smart Search + Search In column</div>
         </div>
 
         <div class="table-wrapper">
@@ -150,6 +158,7 @@
                 <th>Status</th>
                 <th>Date Issued</th>
                 <th>Unit</th>
+                <th>Office</th>
                 <th>OS Licensed/Unlicensed</th>
                 <th>Windows Type</th>
                 <th>MS Office</th>
@@ -158,7 +167,11 @@
                 <th>Action</th>
               </tr>
             </thead>
-            <tbody id="inventoryTableBody"></tbody>
+            <tbody id="inventoryTableBody">
+              <tr>
+                <td colspan="15" class="empty-state">Loading inventory records...</td>
+              </tr>
+            </tbody>
           </table>
         </div>
       </div>
@@ -199,6 +212,7 @@
                 <th>Status</th>
                 <th>Date Issued</th>
                 <th>Unit</th>
+                <th>Office</th>
                 <th>OS</th>
                 <th>Windows Type</th>
                 <th>MS Office</th>
@@ -209,35 +223,50 @@
             <tbody id="printTableBody"></tbody>
           </table>
 
+          <div class="print-summary-box">
+            <div class="print-summary-title">ICT EQUIPMENT SUMMARY</div>
+
+            <table class="print-summary-table">
+              <thead> </thead>
+              <tbody id="printSummaryBody">
+                <tr>
+                  <td colspan="3">No summary available</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                
+              </tfoot>
+            </table>
+            <div class="print-grand-total-final">
+  <span>GRAND TOTAL</span>
+  <strong id="printGrandTotal">0</strong>
+  <small>ICT EQUIPMENT</small>
+</div>
+          </div>
+
           <div class="signature-section">
             <div class="signature-box">
               <div class="signature-label">Prepared by:</div>
-
               <div class="signature-stack">
                 <img id="preparedSignatureImg" class="sig-img" alt="Prepared Signature" />
                 <div class="sig-name" id="preparedPrintName"></div>
-
                 <div class="rank-line">
                   <span id="preparedPrintRank"></span>
                   <span>PAF</span>
                 </div>
-
                 <div class="sig-position" id="preparedPrintPosition"></div>
               </div>
             </div>
 
             <div class="signature-box">
               <div class="signature-label">Checked by:</div>
-
               <div class="signature-stack">
                 <img id="checkedSignatureImg" class="sig-img" alt="Checked Signature" />
                 <div class="sig-name" id="checkedPrintName"></div>
-
                 <div class="rank-line">
                   <span id="checkedPrintRank"></span>
                   <span>PAF</span>
                 </div>
-
                 <div class="sig-position" id="checkedPrintPosition"></div>
               </div>
             </div>
@@ -329,20 +358,15 @@
               <option value="582ACWG">582ACWG</option>
               <option value="583ACWG">583ACWG</option>
               <option value="584ACWG">584ACWG</option>
-              <option value="586ACWG">586MCRS</option>
+              <option value="586MCRS">586MCRS</option>
               <option value="588RMSS">588RMSS</option>
               <option value="589ABMS">589ABMS</option>
             </select>
           </div>
 
           <div>
-            <label for="office_input">Office</label>
-            <input
-              type="text"
-              id="office_input"
-              class="input"
-              placeholder="Enter office"
-            />
+            <label for="office">Office</label>
+            <input type="text" id="office" class="input" placeholder="Enter specific office" />
           </div>
 
           <div>

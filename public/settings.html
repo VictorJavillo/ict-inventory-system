@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Settings | ICT Inventory</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar"><div class="sidebar-header"><h2>ICT Inventory</h2></div><nav class="sidebar-nav"><a href="dashboard.html" data-nav="dashboard">Dashboard</a><a href="inventory.html" data-nav="inventory">Inventory</a><a href="borrow.html" data-nav="borrow">Borrow</a><a href="users.html" data-nav="users">Users</a><a href="logs.html" data-nav="logs">Logs</a><a href="backup.html" data-nav="backup">Backup</a><a href="settings.html" class="active" data-nav="settings">Settings</a><a href="#" onclick="logout()" data-nav="logout">Logout</a></nav></aside>
+    <main class="main-content">
+      <div class="topbar"><div><div class="title">System Settings</div><div class="subtitle">Manage your account, password, and administrator controls.</div></div><div class="badge badge-success js-role-label">User</div></div>
+      <div id="settingsNotice" class="status-box"></div>
+      <div class="grid" style="grid-template-columns:1fr 1fr; align-items:start;">
+        <div class="card">
+          <div class="section-title">Account Information</div>
+          <p class="section-subtext">Update your personal account details.</p>
+          <form id="accountForm" class="mt-16">
+            <div class="form-grid">
+              <div><label for="fullName">Full Name</label><input type="text" id="fullName" class="input" /></div>
+              <div><label for="username">Username</label><input type="text" id="username" class="input" /></div>
+              <div><label for="email">Email</label><input type="email" id="email" class="input" /></div>
+              <div><label for="role">Role</label><input type="text" id="role" class="input" readonly /></div>
+            </div>
+            <div class="actions mt-16"><button class="btn btn-primary" type="submit">Save Account</button><button class="btn btn-secondary" type="button" id="reloadAccountBtn">Reload</button></div>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="section-title">Change Password</div>
+          <p class="section-subtext">Update your password securely.</p>
+          <form id="passwordForm" class="mt-16">
+            <div class="form-grid">
+              <div class="full"><label for="currentPassword">Current Password</label><input type="password" id="currentPassword" class="input" required /></div>
+              <div><label for="newPassword">New Password</label><input type="password" id="newPassword" class="input" required /></div>
+              <div><label for="confirmPassword">Confirm New Password</label><input type="password" id="confirmPassword" class="input" required /></div>
+            </div>
+            <div class="actions mt-16"><button class="btn btn-primary" type="submit">Change Password</button><button class="btn btn-secondary" type="reset">Clear</button></div>
+          </form>
+        </div>
+      </div>
+
+      <div class="card mt-16" data-role-show="admin">
+        <div class="section-title">Admin Settings</div>
+        <p class="section-subtext">Only admin can manage advanced security controls.</p>
+        <form id="adminSettingsForm" class="mt-16">
+          <div class="form-grid">
+            <div><label><input type="checkbox" id="allowUserCreation" /> Allow User Creation</label></div>
+            <div><label><input type="checkbox" id="allowUserDeletion" /> Allow User Deletion</label></div>
+            <div><label><input type="checkbox" id="requireStrongPassword" /> Require Strong Password</label></div>
+            <div><label><input type="checkbox" id="enableLoginAudit" /> Enable Login Audit</label></div>
+            <div><label for="sessionTimeout">Session Timeout (minutes)</label><input type="number" id="sessionTimeout" class="input" min="5" max="480" value="30" /></div>
+            <div><label for="maxLoginAttempts">Max Login Attempts</label><input type="number" id="maxLoginAttempts" class="input" min="1" max="20" value="5" /></div>
+          </div>
+          <div class="actions mt-16"><button class="btn btn-primary" type="submit">Save Admin Settings</button></div>
+        </form>
+      </div>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    let currentUser = null;
+    function showNotice(message, type = 'info') { const box = document.getElementById('settingsNotice'); box.textContent = message; box.className = `status-box ${type}`; }
+    async function fetchJSON(url, options = {}) { const res = await fetch(url, { credentials: 'include', headers: { 'Content-Type': 'application/json', ...(options.headers || {}) }, ...options }); const data = await res.json().catch(() => ({})); if (!res.ok) throw new Error(data.error || data.message || 'Request failed'); return data; }
+    async function loadCurrentUser() { await checkSession(); const data = await fetchJSON('/api/me'); currentUser = data.user; document.getElementById('fullName').value = currentUser.full_name || ''; document.getElementById('username').value = currentUser.username || ''; document.getElementById('email').value = currentUser.email || ''; document.getElementById('role').value = currentUser.role || 'viewer'; }
+    async function saveAccount(e) { e.preventDefault(); try { const data = await fetchJSON('/api/me', { method: 'PUT', body: JSON.stringify({ full_name: document.getElementById('fullName').value.trim(), username: document.getElementById('username').value.trim(), email: document.getElementById('email').value.trim() }) }); currentUser = data.user; showNotice('Account updated successfully.', 'info'); } catch (error) { showNotice(error.message, 'error'); } }
+    async function changePassword(e) { e.preventDefault(); const newPassword = document.getElementById('newPassword').value; const confirmPassword = document.getElementById('confirmPassword').value; if (newPassword !== confirmPassword) return showNotice('New password and confirm password do not match.', 'error'); try { await fetchJSON('/api/change-password', { method: 'POST', body: JSON.stringify({ currentPassword: document.getElementById('currentPassword').value, newPassword }) }); document.getElementById('passwordForm').reset(); showNotice('Password changed successfully.', 'info'); } catch (error) { showNotice(error.message, 'error'); } }
+    async function loadAdminSettings() { if (!currentUser || currentUser.role !== 'admin') return; try { const data = await fetchJSON('/api/admin/settings'); const s = data.settings || {}; document.getElementById('allowUserCreation').checked = !!s.allowUserCreation; document.getElementById('allowUserDeletion').checked = !!s.allowUserDeletion; document.getElementById('requireStrongPassword').checked = !!s.requireStrongPassword; document.getElementById('enableLoginAudit').checked = !!s.enableLoginAudit; document.getElementById('sessionTimeout').value = s.sessionTimeout ?? 30; document.getElementById('maxLoginAttempts').value = s.maxLoginAttempts ?? 5; } catch (_) {} }
+    async function saveAdminSettings(e) { e.preventDefault(); try { await fetchJSON('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ allowUserCreation: document.getElementById('allowUserCreation').checked, allowUserDeletion: document.getElementById('allowUserDeletion').checked, requireStrongPassword: document.getElementById('requireStrongPassword').checked, enableLoginAudit: document.getElementById('enableLoginAudit').checked, sessionTimeout: Number(document.getElementById('sessionTimeout').value || 30), maxLoginAttempts: Number(document.getElementById('maxLoginAttempts').value || 5) }) }); showNotice('Admin settings saved successfully.', 'info'); } catch (error) { showNotice(error.message, 'error'); } }
+    document.getElementById('accountForm').addEventListener('submit', saveAccount); document.getElementById('passwordForm').addEventListener('submit', changePassword); document.getElementById('adminSettingsForm').addEventListener('submit', saveAdminSettings); document.getElementById('reloadAccountBtn').addEventListener('click', loadCurrentUser);
+    (async function init() { await loadCurrentUser(); await loadAdminSettings(); })();
+  </script>
+</body>
+</html>

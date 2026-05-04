@@ -3,11 +3,9 @@ let inventoryData = [];
 let statusChart;
 let licenseChart;
 let categoryChart;
+
 const officeAllowedUnits = ["581ACWG", "582ACWG", "583ACWG", "584ACWG"];
 
-/* =========================
-   COMMON HELPERS
-========================= */
 function $(id) {
   return document.getElementById(id);
 }
@@ -32,6 +30,11 @@ function setImage(id, src) {
   if (el) el.src = src || "";
 }
 
+function hideLoader() {
+  const loader = $("appLoader");
+  if (loader) loader.classList.add("hide");
+}
+
 function safeJSON(res) {
   return res.json().catch(() => ({}));
 }
@@ -45,6 +48,15 @@ function normalizeOptionValue(value) {
     .trim()
     .toLowerCase()
     .replace(/\s+/g, " ");
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
 function setSelectValueFlexible(id, value, fallback = "") {
@@ -64,12 +76,7 @@ function setSelectValueFlexible(id, value, fallback = "") {
     return normalizeOptionValue(option.value) === normalizedRaw;
   });
 
-  if (matchedOption) {
-    el.value = matchedOption.value;
-    return;
-  }
-
-  el.value = fallback;
+  el.value = matchedOption ? matchedOption.value : fallback;
 }
 
 function isComputerCategory(category) {
@@ -86,28 +93,19 @@ function setFieldLock(id, locked) {
   const el = $(id);
   if (!el) return;
 
-  const tag = el.tagName.toLowerCase();
-
-  if (tag === "select") {
+  if (el.tagName.toLowerCase() === "select") {
     el.disabled = locked;
   } else {
     el.readOnly = locked;
+    el.disabled = locked;
   }
 
-  if (locked) {
-    el.classList.add("na-field");
-  } else {
-    el.classList.remove("na-field");
-  }
+  el.classList.toggle("na-field", locked);
 }
 
 function clearNAValue(id) {
   const el = $(id);
-  if (!el) return;
-
-  if (normalizeText(el.value) === "n/a") {
-    el.value = "";
-  }
+  if (el && normalizeText(el.value) === "n/a") el.value = "";
 }
 
 /* =========================
@@ -119,31 +117,26 @@ function handleCategoryChange() {
 
   const isComputer = isComputerCategory(categoryEl.value);
 
-  const osEl = $("os");
-  const windowsTypeEl = $("windows_type");
-  const officeEl = $("ms_office");
-  const antivirusEl = $("antivirus");
-
   if (!isComputer) {
-    if (osEl) osEl.value = "N/A";
-    if (windowsTypeEl) windowsTypeEl.value = "N/A";
-    if (officeEl) officeEl.value = "N/A";
-    if (antivirusEl) antivirusEl.value = "N/A";
+    setValue("os", "N/A");
+    setValue("windows_type", "N/A");
+    setValue("ms_office", "N/A");
+    setValue("antivirus", "N/A");
 
     setFieldLock("os", true);
     setFieldLock("windows_type", true);
     setFieldLock("ms_office", true);
     setFieldLock("antivirus", true);
   } else {
-    clearNAValue("os");
-    clearNAValue("windows_type");
-    clearNAValue("ms_office");
-    clearNAValue("antivirus");
-
     setFieldLock("os", false);
     setFieldLock("windows_type", false);
     setFieldLock("ms_office", false);
     setFieldLock("antivirus", false);
+
+    clearNAValue("os");
+    clearNAValue("windows_type");
+    clearNAValue("ms_office");
+    clearNAValue("antivirus");
   }
 }
 
@@ -153,25 +146,21 @@ function isOfficeAllowedUnit(unitValue) {
 
 function handleUnitOfficeLogic() {
   const unitEl = $("unit");
-  const officeInputEl = $("office_input");
+  const officeEl = $("office");
 
-  if (!unitEl || !officeInputEl) return;
+  if (!unitEl || !officeEl) return;
 
   const selectedUnit = String(unitEl.value || "").trim().toUpperCase();
   const allowed = isOfficeAllowedUnit(selectedUnit);
 
   if (allowed) {
-    setFieldLock("office_input", false);
-
-    if (normalizeText(officeInputEl.value) === "n/a") {
-      officeInputEl.value = "";
-    }
-
-    officeInputEl.placeholder = "Enter office";
+    setFieldLock("office", false);
+    if (normalizeText(officeEl.value) === "n/a") officeEl.value = "";
+    officeEl.placeholder = "Enter specific office";
   } else {
-    officeInputEl.value = "N/A";
-    setFieldLock("office_input", true);
-    officeInputEl.placeholder = "N/A";
+    officeEl.value = "N/A";
+    setFieldLock("office", true);
+    officeEl.placeholder = "N/A";
   }
 }
 
@@ -190,50 +179,31 @@ function buildUnitDisplay(unitValue, officeValue) {
   const cleanUnit = String(unitValue || "").trim();
   let cleanOffice = String(officeValue || "").trim();
 
-  if (!cleanUnit) {
-    if (cleanOffice && normalizeText(cleanOffice) !== "n/a") {
-      return `${cleanOffice} Office`;
-    }
-    return "";
-  }
+  if (!cleanUnit) return "";
 
-  if (!isOfficeAllowedUnit(cleanUnit)) {
-    return cleanUnit;
-  }
+  if (!isOfficeAllowedUnit(cleanUnit)) return cleanUnit;
 
-  if (!cleanOffice || normalizeText(cleanOffice) === "n/a") {
-    return cleanUnit;
-  }
+  if (!cleanOffice || normalizeText(cleanOffice) === "n/a") return cleanUnit;
 
-  return `${cleanUnit} - ${cleanOffice} Office`;
+  return `${cleanUnit} - ${cleanOffice}`;
 }
 
 function parseUnitDisplay(savedUnitValue) {
   const raw = String(savedUnitValue || "").trim();
 
-  if (!raw) {
-    return {
-      unit: "",
-      office: ""
-    };
-  }
+  if (!raw) return { unit: "", office: "N/A" };
 
   if (raw.includes(" - ")) {
     const parts = raw.split(" - ");
-    const unitPart = String(parts[0] || "").trim();
-    const officePart = String(parts.slice(1).join(" - ") || "")
-      .replace(/\s*Office\s*$/i, "")
-      .trim();
-
     return {
-      unit: unitPart,
-      office: officePart
+      unit: String(parts[0] || "").trim(),
+      office: String(parts.slice(1).join(" - ") || "").replace(/\s*Office\s*$/i, "").trim()
     };
   }
 
   return {
     unit: raw,
-    office: ""
+    office: "N/A"
   };
 }
 
@@ -247,9 +217,14 @@ async function checkSession() {
 
     if (!data.loggedIn) {
       window.location.href = "/login.html";
+      return false;
     }
+
+    return true;
   } catch (err) {
     console.error("Session check failed:", err);
+    hideLoader();
+    return false;
   }
 }
 
@@ -259,6 +234,7 @@ async function logout() {
   } catch (err) {
     console.error("Logout failed:", err);
   }
+
   window.location.href = "/login.html";
 }
 
@@ -267,19 +243,25 @@ async function logout() {
 ========================= */
 function openModal(id) {
   const modal = $(id);
-  if (modal) modal.style.display = "flex";
+  if (modal) {
+    modal.style.display = "flex";
+    modal.classList.add("show");
+  }
 }
 
 function closeModal(id) {
   const modal = $(id);
-  if (modal) modal.style.display = "none";
+  if (modal) {
+    modal.style.display = "none";
+    modal.classList.remove("show");
+  }
 }
 
 /* =========================
    FORMATTING
 ========================= */
 function badgeStatus(status) {
-  return status === "OPNL"
+  return normalizeText(status) === "opnl"
     ? `<span class="badge badge-opnl">OPNL</span>`
     : `<span class="badge badge-nopnl">NOPNL</span>`;
 }
@@ -300,13 +282,9 @@ function sortInventoryAscending(data) {
 function formatMonthInput(value) {
   if (!value) return "";
 
-  if (/^\d{4}-\d{2}$/.test(value)) {
-    return value;
-  }
+  if (/^\d{4}-\d{2}$/.test(value)) return value;
 
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return value.slice(0, 7);
-  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value.slice(0, 7);
 
   const date = new Date(value);
   if (isNaN(date.getTime())) return "";
@@ -315,44 +293,24 @@ function formatMonthInput(value) {
 }
 
 function formatMonthYearDisplay(value) {
-  if (!value) return "";
+  if (!value) return "N/A";
 
-  if (/^\d{4}-\d{2}$/.test(value)) {
+  if (/^\d{4}-\d{2}$/.test(value) || /^\d{4}-\d{2}-\d{2}$/.test(value)) {
     const [year, month] = value.split("-");
     const date = new Date(Number(year), Number(month) - 1, 1);
-    return date.toLocaleDateString("en-US", {
-      month: "long",
-      year: "numeric"
-    });
-  }
-
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    const [year, month] = value.split("-");
-    const date = new Date(Number(year), Number(month) - 1, 1);
-    return date.toLocaleDateString("en-US", {
-      month: "long",
-      year: "numeric"
-    });
+    return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
   }
 
   const date = new Date(value);
   if (isNaN(date.getTime())) return value;
 
-  return date.toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric"
-  });
+  return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 }
 
 function parseMonthValue(dateValue) {
   if (!dateValue) return null;
 
-  if (/^\d{4}-\d{2}$/.test(dateValue)) {
-    const [year, month] = dateValue.split("-").map(Number);
-    return new Date(year, month - 1, 1);
-  }
-
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+  if (/^\d{4}-\d{2}$/.test(dateValue) || /^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
     const [year, month] = dateValue.split("-").map(Number);
     return new Date(year, month - 1, 1);
   }
@@ -362,10 +320,10 @@ function parseMonthValue(dateValue) {
 }
 
 function getDateClass(dateValue) {
-  if (!dateValue) return "";
+  if (!dateValue) return "red";
 
   const date = parseMonthValue(dateValue);
-  if (!date) return "";
+  if (!date) return "red";
 
   const today = new Date();
   const diffMonths =
@@ -376,12 +334,11 @@ function getDateClass(dateValue) {
 
   if (diffYears <= 2) return "green";
   if (diffYears > 2 && diffYears < 3.5) return "yellow";
-  if (diffYears >= 3.5) return "red";
-  return "";
+  return "red";
 }
 
 /* =========================
-   INVENTORY MODAL / FORM
+   INVENTORY
 ========================= */
 function openInventoryModal(item = null) {
   const form = $("inventoryForm");
@@ -392,13 +349,11 @@ function openInventoryModal(item = null) {
   setValue("editId", "");
   setText("modalTitle", "Add Equipment");
   setValue("date_issued", "");
-  setValue("office_input", "N/A");
+  setValue("office", "N/A");
 
   if (item) {
     setValue("editId", item.id || "");
     setSelectValueFlexible("category", item.category || "");
-
-    handleCategoryChange();
 
     setValue("description", item.description || "");
     setValue("serial_number", item.serial_number || "");
@@ -408,22 +363,19 @@ function openInventoryModal(item = null) {
 
     const parsedUnit = parseUnitDisplay(item.unit || "");
     setSelectValueFlexible("unit", parsedUnit.unit || "", "");
-    setValue("office_input", parsedUnit.office || "");
+    setValue("office", parsedUnit.office || "N/A");
 
-    handleUnitOfficeLogic();
-
-    setSelectValueFlexible("os", item.os || "", "");
-    setSelectValueFlexible("windows_type", item.windows_type || "", "");
-    setSelectValueFlexible("ms_office", item.ms_office || "", "");
-    setSelectValueFlexible("antivirus", item.antivirus || "", "");
+    setSelectValueFlexible("os", item.os || "N/A", "N/A");
+    setSelectValueFlexible("windows_type", item.windows_type || "N/A", "N/A");
+    setSelectValueFlexible("ms_office", item.ms_office || "N/A", "N/A");
+    setSelectValueFlexible("antivirus", item.antivirus || "N/A", "N/A");
 
     setValue("remarks", item.remarks || "");
     setText("modalTitle", "Edit Equipment");
-  } else {
-    handleCategoryChange();
-    handleUnitOfficeLogic();
   }
 
+  handleCategoryChange();
+  handleUnitOfficeLogic();
   openModal("inventoryModal");
 }
 
@@ -439,9 +391,12 @@ async function loadInventory() {
     const data = await safeJSON(res);
     inventoryData = sortInventoryAscending(Array.isArray(data) ? data : []);
     filteredData = [];
+
     renderInventoryTable(inventoryData);
+    hideLoader();
   } catch (err) {
     console.error("Failed to load inventory:", err);
+    hideLoader();
   }
 }
 
@@ -451,31 +406,41 @@ function renderInventoryTable(data) {
 
   const sortedData = sortInventoryAscending(data);
 
-  tbody.innerHTML = sortedData.map((item, index) => `
-    <tr>
-      <td>${index + 1}</td>
-      <td>${item.category || ""}</td>
-      <td>${item.description || ""}</td>
-      <td>${item.serial_number || ""}</td>
-      <td>${item.property_number || ""}</td>
-      <td>${badgeStatus(item.status || "")}</td>
-      <td>
-        <span class="date-badge ${getDateClass(item.date_issued)}">
-          ${formatMonthYearDisplay(item.date_issued)}
-        </span>
-      </td>
-      <td>${item.unit || ""}</td>
-      <td>${item.os || ""}</td>
-      <td>${item.windows_type || ""}</td>
-      <td>${item.ms_office || ""}</td>
-      <td>${item.antivirus || ""}</td>
-      <td>${item.remarks || ""}</td>
-      <td class="action-cell">
-        <button type="button" class="btn btn-sm btn-warning edit-btn" data-id="${item.id}">Edit</button>
-        <button type="button" class="btn btn-sm btn-danger delete-btn" data-id="${item.id}">Delete</button>
-      </td>
-    </tr>
-  `).join("");
+  if (!sortedData.length) {
+    tbody.innerHTML = `<tr><td colspan="15" class="empty-state">No equipment records found.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = sortedData.map((item, index) => {
+    const parsed = parseUnitDisplay(item.unit || "");
+
+    return `
+      <tr>
+        <td>${index + 1}</td>
+        <td>${escapeHtml(item.category || "")}</td>
+        <td>${escapeHtml(item.description || "")}</td>
+        <td>${escapeHtml(item.serial_number || "")}</td>
+        <td>${escapeHtml(item.property_number || "")}</td>
+        <td>${badgeStatus(item.status || "")}</td>
+        <td>
+          <span class="date-badge ${getDateClass(item.date_issued)}">
+            ${escapeHtml(formatMonthYearDisplay(item.date_issued))}
+          </span>
+        </td>
+        <td>${escapeHtml(parsed.unit || item.unit || "")}</td>
+        <td>${escapeHtml(parsed.office || "N/A")}</td>
+        <td>${escapeHtml(item.os || "N/A")}</td>
+        <td>${escapeHtml(item.windows_type || "N/A")}</td>
+        <td>${escapeHtml(item.ms_office || "N/A")}</td>
+        <td>${escapeHtml(item.antivirus || "N/A")}</td>
+        <td>${escapeHtml(item.remarks || "")}</td>
+        <td class="action-cell">
+          <button type="button" class="btn btn-sm btn-warning edit-btn" data-id="${item.id}">Edit</button>
+          <button type="button" class="btn btn-sm btn-danger delete-btn" data-id="${item.id}">Delete</button>
+        </td>
+      </tr>
+    `;
+  }).join("");
 }
 
 function filterInventory() {
@@ -494,13 +459,20 @@ function filterInventory() {
   }
 
   const filtered = inventoryData.filter(item => {
+    const parsed = parseUnitDisplay(item.unit || "");
+    const searchableItem = {
+      ...item,
+      unit_only: parsed.unit,
+      office: parsed.office
+    };
+
     if (column === "all") {
-      return Object.values(item).some(v =>
+      return Object.values(searchableItem).some(v =>
         String(v ?? "").toLowerCase().includes(value)
       );
     }
 
-    return String(item[column] ?? "").toLowerCase().includes(value);
+    return String(searchableItem[column] ?? "").toLowerCase().includes(value);
   });
 
   filteredData = sortInventoryAscending(filtered);
@@ -513,10 +485,10 @@ async function saveInventoryForm(e) {
   const editId = getValue("editId");
   const category = getValue("category");
 
-  let os = getValue("os").replace(/\s+/g, " ").trim();
-  let windowsType = getValue("windows_type").replace(/\s+/g, " ").trim();
-  let msOffice = getValue("ms_office").replace(/\s+/g, " ").trim();
-  let antivirus = getValue("antivirus").replace(/\s+/g, " ").trim();
+  let os = getValue("os");
+  let windowsType = getValue("windows_type");
+  let msOffice = getValue("ms_office");
+  let antivirus = getValue("antivirus");
 
   if (!isComputerCategory(category)) {
     os = "N/A";
@@ -526,10 +498,10 @@ async function saveInventoryForm(e) {
   }
 
   const selectedUnit = getValue("unit");
-  let officeInputValue = getValue("office_input");
+  let officeValue = getValue("office");
 
   if (!isOfficeAllowedUnit(selectedUnit)) {
-    officeInputValue = "N/A";
+    officeValue = "N/A";
   }
 
   let nrValue = "";
@@ -549,7 +521,7 @@ async function saveInventoryForm(e) {
     property_number: getValue("property_number"),
     status: getValue("status"),
     date_issued: getValue("date_issued"),
-    unit: buildUnitDisplay(selectedUnit, officeInputValue),
+    unit: buildUnitDisplay(selectedUnit, officeValue),
     os,
     windows_type: windowsType,
     ms_office: msOffice,
@@ -586,10 +558,7 @@ async function deleteInventory(id) {
   if (!confirm("Delete this record?")) return;
 
   try {
-    const res = await fetch(`/api/inventory/${id}`, {
-      method: "DELETE"
-    });
-
+    const res = await fetch(`/api/inventory/${id}`, { method: "DELETE" });
     const result = await safeJSON(res);
 
     if (!res.ok) {
@@ -605,7 +574,7 @@ async function deleteInventory(id) {
 }
 
 /* =========================
-   BORROW PAGE
+   BORROW
 ========================= */
 async function loadBorrows() {
   try {
@@ -623,20 +592,23 @@ async function loadBorrows() {
       tbody.innerHTML = (Array.isArray(data) ? data : []).map((item, index) => `
         <tr>
           <td>${index + 1}</td>
-          <td>${item.borrower_name || ""}</td>
-          <td>${item.office_unit || ""}</td>
-          <td>${item.equipment || ""}</td>
-          <td>${item.quantity || ""}</td>
-          <td>${item.date_borrowed || ""}</td>
-          <td>${item.date_return || ""}</td>
-          <td>${item.purpose || ""}</td>
-          <td>${item.remarks || ""}</td>
+          <td>${escapeHtml(item.borrower_name || "")}</td>
+          <td>${escapeHtml(item.office_unit || "")}</td>
+          <td>${escapeHtml(item.equipment || "")}</td>
+          <td>${escapeHtml(item.quantity || "")}</td>
+          <td>${escapeHtml(item.date_borrowed || "")}</td>
+          <td>${escapeHtml(item.date_return || "")}</td>
+          <td>${escapeHtml(item.purpose || "")}</td>
+          <td>${escapeHtml(item.remarks || "")}</td>
           <td><button type="button" class="btn btn-danger" onclick="deleteBorrow(${item.id})">Delete</button></td>
         </tr>
       `).join("");
     }
+
+    hideLoader();
   } catch (err) {
     console.error("Failed to load borrows:", err);
+    hideLoader();
   }
 }
 
@@ -670,6 +642,7 @@ async function saveBorrowForm(e) {
 
     const form = $("borrowForm");
     if (form) form.reset();
+
     await loadBorrows();
   } catch (err) {
     console.error("Borrow save failed:", err);
@@ -701,12 +674,11 @@ async function deleteBorrow(id) {
 ========================= */
 function isLicensedValue(value) {
   const normalized = normalizeText(value);
-  return normalized === "licensed" || normalized === "with license";
-}
-
-function isUnlicensedValue(value) {
-  const normalized = normalizeText(value);
-  return normalized === "unlicensed" || normalized === "no license";
+  return (
+    normalized === "licensed" ||
+    normalized === "with license" ||
+    normalized === "retail licensed"
+  );
 }
 
 async function loadDashboard() {
@@ -722,20 +694,16 @@ async function loadDashboard() {
     const inventoryItems = sortInventoryAscending(Array.isArray(data.inventory) ? data.inventory : []);
 
     setText("totalAssets", data.totalAssets || inventoryItems.length);
-    setText(
-      "opnlAssets",
-      data.opnlAssets || inventoryItems.filter(item => normalizeText(item.status) === "opnl").length
-    );
-    setText(
-      "nopnlAssets",
-      data.nopnlAssets || inventoryItems.filter(item => normalizeText(item.status) === "nopnl").length
-    );
+    setText("opnlAssets", data.opnlAssets || inventoryItems.filter(item => normalizeText(item.status) === "opnl").length);
+    setText("nopnlAssets", data.nopnlAssets || inventoryItems.filter(item => normalizeText(item.status) === "nopnl").length);
     setText("borrowedAssets", data.borrowedAssets || 0);
 
     renderDashboardTable(inventoryItems);
     renderCharts(inventoryItems);
+    hideLoader();
   } catch (err) {
     console.error("Failed to load dashboard:", err);
+    hideLoader();
   }
 }
 
@@ -746,29 +714,30 @@ function renderDashboardTable(items) {
   const sortedItems = sortInventoryAscending(items);
 
   if (!sortedItems.length) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="11" class="empty-state">No inventory records found.</td>
-      </tr>
-    `;
+    tbody.innerHTML = `<tr><td colspan="12" class="empty-state">No inventory records found.</td></tr>`;
     return;
   }
 
-  tbody.innerHTML = sortedItems.slice(-10).reverse().map((item, index) => `
-    <tr>
-      <td>${item.nr || index + 1}</td>
-      <td>${item.category || ""}</td>
-      <td>${item.description || ""}</td>
-      <td>${item.serial_number || ""}</td>
-      <td>${item.property_number || ""}</td>
-      <td>${badgeStatus(item.status || "")}</td>
-      <td>${item.unit || ""}</td>
-      <td>${item.os || ""}</td>
-      <td>${item.ms_office || ""}</td>
-      <td>${item.antivirus || ""}</td>
-      <td>${item.remarks || ""}</td>
-    </tr>
-  `).join("");
+  tbody.innerHTML = sortedItems.slice(-10).reverse().map((item, index) => {
+    const parsed = parseUnitDisplay(item.unit || "");
+
+    return `
+      <tr>
+        <td>${index + 1}</td>
+        <td>${escapeHtml(item.category || "")}</td>
+        <td>${escapeHtml(item.description || "")}</td>
+        <td>${escapeHtml(item.serial_number || "")}</td>
+        <td>${escapeHtml(item.property_number || "")}</td>
+        <td>${badgeStatus(item.status || "")}</td>
+        <td>${escapeHtml(formatMonthYearDisplay(item.date_issued))}</td>
+        <td>${escapeHtml(parsed.unit || item.unit || "")}</td>
+        <td>${escapeHtml(item.os || "N/A")}</td>
+        <td>${escapeHtml(item.ms_office || "N/A")}</td>
+        <td>${escapeHtml(item.antivirus || "N/A")}</td>
+        <td>${escapeHtml(item.remarks || "")}</td>
+      </tr>
+    `;
+  }).join("");
 }
 
 function renderCharts(items) {
@@ -829,22 +798,14 @@ function renderCharts(items) {
         borderColor: ["rgba(74,222,128,1)", "rgba(248,113,113,1)"],
         borderWidth: 1.5,
         borderRadius: 16,
-        borderSkipped: false,
-        barPercentage: 0.72,
-        categoryPercentage: 0.72
+        borderSkipped: false
       }]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      animation: {
-        duration: 1200,
-        easing: "easeOutQuart"
-      },
       plugins: {
-        legend: {
-          display: false
-        },
+        legend: { display: false },
         tooltip: {
           backgroundColor: "rgba(15,23,42,0.96)",
           titleColor: "#ffffff",
@@ -852,54 +813,27 @@ function renderCharts(items) {
           borderColor: "rgba(148,163,184,0.35)",
           borderWidth: 1,
           cornerRadius: 12,
-          padding: 12,
-          displayColors: true,
           callbacks: {
-            label: function(context) {
-              return ` Total: ${context.parsed.y}`;
-            }
+            label: context => ` Total: ${context.parsed.y}`
           }
         }
       },
       scales: {
         x: {
-          grid: {
-            display: false,
-            drawBorder: false
-          },
-          ticks: {
-            color: "#ffffff",
-            font: {
-              size: 14,
-              weight: "600"
-            }
-          }
+          grid: { display: false },
+          ticks: { color: "#ffffff", font: { size: 14, weight: "600" } }
         },
         y: {
           beginAtZero: true,
           grace: "10%",
-          grid: {
-            color: "rgba(255,255,255,0.06)",
-            drawBorder: false
-          },
-          ticks: {
-            color: "#cbd5e1",
-            precision: 0,
-            font: {
-              size: 12
-            }
-          }
+          grid: { color: "rgba(255,255,255,0.06)" },
+          ticks: { color: "#cbd5e1", precision: 0 }
         }
       },
       onClick: (evt, elements) => {
         if (!elements.length) return;
         const idx = elements[0].index;
-
-        if (idx === 0) {
-          showChartDetails("OPNL Records", opnlItems);
-        } else {
-          showChartDetails("NOPNL Records", nopnlItems);
-        }
+        showChartDetails(idx === 0 ? "OPNL Records" : "NOPNL Records", idx === 0 ? opnlItems : nopnlItems);
       }
     },
     plugins: [{
@@ -907,7 +841,6 @@ function renderCharts(items) {
       afterDatasetsDraw(chart) {
         const { ctx } = chart;
         ctx.save();
-
         chart.getDatasetMeta(0).data.forEach((bar, index) => {
           const value = chart.data.datasets[0].data[index];
           ctx.fillStyle = "#ffffff";
@@ -916,7 +849,6 @@ function renderCharts(items) {
           ctx.textBaseline = "bottom";
           ctx.fillText(value, bar.x, bar.y - 8);
         });
-
         ctx.restore();
       }
     }]
@@ -928,14 +860,8 @@ function renderCharts(items) {
       labels: ["Licensed", "No License / N/A"],
       datasets: [{
         data: [licensedItems.length, unlicensedItems.length],
-        backgroundColor: [
-          "rgba(59,130,246,0.92)",
-          "rgba(245,158,11,0.92)"
-        ],
-        borderColor: [
-          "rgba(147,197,253,1)",
-          "rgba(252,211,77,1)"
-        ],
+        backgroundColor: ["rgba(59,130,246,0.92)", "rgba(245,158,11,0.92)"],
+        borderColor: ["rgba(147,197,253,1)", "rgba(252,211,77,1)"],
         borderWidth: 2,
         hoverOffset: 18
       }]
@@ -944,10 +870,6 @@ function renderCharts(items) {
       responsive: true,
       maintainAspectRatio: false,
       cutout: "62%",
-      animation: {
-        duration: 1300,
-        easing: "easeOutQuart"
-      },
       plugins: {
         legend: {
           position: "bottom",
@@ -956,10 +878,7 @@ function renderCharts(items) {
             padding: 18,
             usePointStyle: true,
             pointStyle: "circle",
-            font: {
-              size: 13,
-              weight: "600"
-            }
+            font: { size: 13, weight: "600" }
           }
         },
         tooltip: {
@@ -970,7 +889,7 @@ function renderCharts(items) {
           borderWidth: 1,
           cornerRadius: 12,
           callbacks: {
-            label: function(context) {
+            label: context => {
               const total = licensedItems.length + unlicensedItems.length || 1;
               const percent = ((context.raw / total) * 100).toFixed(1);
               return ` ${context.label}: ${context.raw} (${percent}%)`;
@@ -980,13 +899,8 @@ function renderCharts(items) {
       },
       onClick: (evt, elements) => {
         if (!elements.length) return;
-
         const idx = elements[0].index;
-        if (idx === 0) {
-          showChartDetails("Licensed Records", licensedItems);
-        } else {
-          showChartDetails("No License / N/A Records", unlicensedItems);
-        }
+        showChartDetails(idx === 0 ? "Licensed Records" : "No License / N/A Records", idx === 0 ? licensedItems : unlicensedItems);
       }
     },
     plugins: [{
@@ -1004,19 +918,15 @@ function renderCharts(items) {
         ctx.save();
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-
         ctx.fillStyle = "#ffffff";
         ctx.font = "bold 30px Arial";
         ctx.fillText(total, centerX, centerY - 20);
-
         ctx.fillStyle = "#cbd5e1";
         ctx.font = "14px Arial";
         ctx.fillText("Total Assets", centerX, centerY + 5);
-
         ctx.fillStyle = "#60a5fa";
         ctx.font = "bold 14px Arial";
         ctx.fillText(`${licensedPercent}% Licensed`, centerX, centerY + 28);
-
         ctx.restore();
       }
     }]
@@ -1039,14 +949,8 @@ function renderCharts(items) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      animation: {
-        duration: 1200,
-        easing: "easeOutQuart"
-      },
       plugins: {
-        legend: {
-          display: false
-        },
+        legend: { display: false },
         tooltip: {
           backgroundColor: "rgba(15,23,42,0.96)",
           titleColor: "#ffffff",
@@ -1054,49 +958,26 @@ function renderCharts(items) {
           borderColor: "rgba(148,163,184,0.35)",
           borderWidth: 1,
           cornerRadius: 12,
-          padding: 12,
           callbacks: {
-            label: function(context) {
-              return ` Total: ${context.raw}`;
-            }
+            label: context => ` Total: ${context.raw}`
           }
         }
       },
       scales: {
         x: {
-          ticks: {
-            color: "#ffffff",
-            font: {
-              size: 12,
-              weight: "600"
-            }
-          },
-          grid: {
-            display: false,
-            drawBorder: false
-          }
+          ticks: { color: "#ffffff", font: { size: 12, weight: "600" } },
+          grid: { display: false }
         },
         y: {
           beginAtZero: true,
-          ticks: {
-            color: "#cbd5e1",
-            precision: 0
-          },
-          grid: {
-            color: "rgba(255,255,255,0.06)",
-            drawBorder: false
-          }
+          ticks: { color: "#cbd5e1", precision: 0 },
+          grid: { color: "rgba(255,255,255,0.06)" }
         }
       },
       onClick: (evt, elements) => {
         if (!elements.length) return;
-
-        const idx = elements[0].index;
-        const selectedCategory = categoryLabels[idx];
-        const filteredItems = items.filter(
-          item => String(item.category || "").trim() === selectedCategory
-        );
-
+        const selectedCategory = categoryLabels[elements[0].index];
+        const filteredItems = items.filter(item => String(item.category || "").trim() === selectedCategory);
         showChartDetails(`${selectedCategory} Records`, filteredItems);
       }
     },
@@ -1105,7 +986,6 @@ function renderCharts(items) {
       afterDatasetsDraw(chart) {
         const { ctx } = chart;
         ctx.save();
-
         chart.getDatasetMeta(0).data.forEach((bar, index) => {
           const value = chart.data.datasets[0].data[index];
           ctx.fillStyle = "#ffffff";
@@ -1114,7 +994,6 @@ function renderCharts(items) {
           ctx.textBaseline = "bottom";
           ctx.fillText(value, bar.x, bar.y - 6);
         });
-
         ctx.restore();
       }
     }]
@@ -1131,33 +1010,34 @@ function showChartDetails(title, items) {
   const sortedItems = sortInventoryAscending(items);
 
   if (!sortedItems.length) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="11" class="empty-state">No matching records found.</td>
-      </tr>
-    `;
+    tbody.innerHTML = `<tr><td colspan="11" class="empty-state">No matching records found.</td></tr>`;
     openModal("chartModal");
     return;
   }
 
-  tbody.innerHTML = sortedItems.map((item, index) => `
-    <tr>
-      <td>${item.nr || index + 1}</td>
-      <td>${item.category || ""}</td>
-      <td>${item.description || ""}</td>
-      <td>${item.serial_number || ""}</td>
-      <td>${item.property_number || ""}</td>
-      <td>${badgeStatus(item.status || "")}</td>
-      <td>${item.unit || ""}</td>
-      <td>${item.os || ""}</td>
-      <td>${item.ms_office || ""}</td>
-      <td>${item.antivirus || ""}</td>
-      <td>${item.remarks || ""}</td>
-    </tr>
-  `).join("");
+  tbody.innerHTML = sortedItems.map((item, index) => {
+    const parsed = parseUnitDisplay(item.unit || "");
+
+    return `
+      <tr>
+        <td>${index + 1}</td>
+        <td>${escapeHtml(item.category || "")}</td>
+        <td>${escapeHtml(item.description || "")}</td>
+        <td>${escapeHtml(item.serial_number || "")}</td>
+        <td>${escapeHtml(item.property_number || "")}</td>
+        <td>${badgeStatus(item.status || "")}</td>
+        <td>${escapeHtml(parsed.unit || item.unit || "")}</td>
+        <td>${escapeHtml(item.os || "N/A")}</td>
+        <td>${escapeHtml(item.ms_office || "N/A")}</td>
+        <td>${escapeHtml(item.antivirus || "N/A")}</td>
+        <td>${escapeHtml(item.remarks || "")}</td>
+      </tr>
+    `;
+  }).join("");
 
   openModal("chartModal");
 }
+
 /* =========================
    PRINT
 ========================= */
@@ -1189,38 +1069,43 @@ async function printInventoryReport() {
 
   const activeData = filteredData.length > 0 ? filteredData : inventoryData;
   const dataToPrint = sortInventoryAscending(activeData);
+  generatePrintSummary(dataToPrint);
+  const printMode = getValue("printMode") || "table_summary";
+const reportPage = document.querySelector(".report-page");
+
+if (reportPage) {
+  reportPage.classList.toggle("print-grand-only", printMode === "grand_only");
+}
   const printBody = $("printTableBody");
   if (!printBody) return;
 
-  let html = "";
+  printBody.innerHTML = dataToPrint.map((item, index) => {
+    const parsed = parseUnitDisplay(item.unit || "");
 
-  dataToPrint.forEach((item, index) => {
-    html += `
+    return `
       <tr>
         <td>${index + 1}</td>
-        <td>${item.category || ""}</td>
-        <td>${item.description || ""}</td>
-        <td>${item.serial_number || ""}</td>
-        <td>${item.property_number || ""}</td>
-        <td>${item.status || ""}</td>
-        <td>${formatMonthYearDisplay(item.date_issued)}</td>
-        <td>${item.unit || ""}</td>
-        <td>${item.os || ""}</td>
-        <td>${item.windows_type || ""}</td>
-        <td>${item.ms_office || ""}</td>
-        <td>${item.antivirus || ""}</td>
-        <td>${item.remarks || ""}</td>
+        <td>${escapeHtml(item.category || "")}</td>
+        <td>${escapeHtml(item.description || "")}</td>
+        <td>${escapeHtml(item.serial_number || "")}</td>
+        <td>${escapeHtml(item.property_number || "")}</td>
+        <td>${escapeHtml(item.status || "")}</td>
+        <td>${escapeHtml(formatMonthYearDisplay(item.date_issued))}</td>
+        <td>${escapeHtml(parsed.unit || item.unit || "")}</td>
+        <td>${escapeHtml(parsed.office || "N/A")}</td>
+        <td>${escapeHtml(item.os || "N/A")}</td>
+        <td>${escapeHtml(item.windows_type || "N/A")}</td>
+        <td>${escapeHtml(item.ms_office || "N/A")}</td>
+        <td>${escapeHtml(item.antivirus || "N/A")}</td>
+        <td>${escapeHtml(item.remarks || "")}</td>
       </tr>
     `;
-  });
+  }).join("");
 
-  printBody.innerHTML = html;
   loadSignatories();
   await waitForPrintAssets($("printArea") || document);
 
-  setTimeout(() => {
-    window.print();
-  }, 250);
+  setTimeout(() => window.print(), 250);
 }
 
 function printBorrow() {
@@ -1231,71 +1116,168 @@ function printBorrow() {
   window.print();
   printArea.style.display = "none";
 }
+/* =========================
+   PRINT SUMMARY (NEW)
+========================= */
 
+function generatePrintSummary(data) {
+  const summaryBox = $("printSummaryBody");
+  const grandTotalBox = $("printGrandTotal");
+
+  if (!summaryBox) return;
+
+  if (!Array.isArray(data) || data.length === 0) {
+    summaryBox.innerHTML = `<tr><td colspan="10">No summary available</td></tr>`;
+    if (grandTotalBox) grandTotalBox.textContent = "0";
+    return;
+  }
+
+  const categories = [
+    "Desktop Computer",
+    "Laptop",
+    "Printer",
+    "Mobile Phone",
+    "Handheld Radio",
+    "Base Radio",
+    "Television",
+    "Others"
+  ];
+
+  const siteOrder = [
+    "581ACWG",
+    "582ACWG",
+    "583ACWG",
+    "584ACWG",
+    "586MCRS",
+    "588RMSS",
+    "589ABMS"
+  ];
+
+  const summary = {};
+  const grandColumnTotals = {};
+  categories.forEach(cat => grandColumnTotals[cat] = 0);
+
+  let grandTotal = 0;
+
+  data.forEach(item => {
+    const parsed = parseUnitDisplay(item.unit || "");
+
+    const site = parsed.unit || item.unit || "N/A";
+
+    const office =
+      parsed.office && parsed.office !== "N/A"
+        ? parsed.office
+        : "GENERAL / NO OFFICE";
+
+    const equipment = categories.includes(item.category)
+      ? item.category
+      : "Others";
+
+    if (!summary[site]) summary[site] = {};
+    if (!summary[site][office]) {
+      summary[site][office] = {};
+      categories.forEach(cat => summary[site][office][cat] = 0);
+    }
+
+    summary[site][office][equipment]++;
+    grandColumnTotals[equipment]++;
+    grandTotal++;
+  });
+
+  function sortSites(a, b) {
+    const aIndex = siteOrder.indexOf(a);
+    const bIndex = siteOrder.indexOf(b);
+
+    if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+    if (aIndex !== -1) return -1;
+    if (bIndex !== -1) return 1;
+
+    return a.localeCompare(b);
+  }
+
+  let rows = "";
+
+  Object.keys(summary).sort(sortSites).forEach(site => {
+    const siteColumnTotals = {};
+    categories.forEach(cat => siteColumnTotals[cat] = 0);
+
+    let siteTotal = 0;
+
+    rows += `
+      <tr class="summary-site-title">
+        <td colspan="${categories.length + 2}">${escapeHtml(site)}</td>
+      </tr>
+      <tr class="summary-matrix-head">
+        <th>Office / Section</th>
+        ${categories.map(cat => `<th>${escapeHtml(cat)}</th>`).join("")}
+        <th>Total</th>
+      </tr>
+    `;
+
+    Object.keys(summary[site]).sort().forEach(office => {
+      let officeTotal = 0;
+
+      rows += `<tr>`;
+      rows += `<td class="summary-office">${escapeHtml(office)}</td>`;
+
+      categories.forEach(cat => {
+        const count = summary[site][office][cat] || 0;
+        officeTotal += count;
+        siteColumnTotals[cat] += count;
+        siteTotal += count;
+
+        rows += `
+          <td class="summary-count ${count > 0 ? "has-count" : "no-count"}">
+            ${count > 0 ? count : ""}
+          </td>
+        `;
+      });
+
+      rows += `<td class="summary-row-total">${officeTotal}</td>`;
+      rows += `</tr>`;
+    });
+
+    rows += `
+      <tr class="summary-site-total">
+        <td>SITE TOTAL - ${escapeHtml(site)}</td>
+        ${categories.map(cat => `
+          <td class="summary-count">${siteColumnTotals[cat] || ""}</td>
+        `).join("")}
+        <td class="summary-row-total">${siteTotal}</td>
+      </tr>
+    `;
+  });
+
+  rows += `
+    <tr class="summary-grand-total-row">
+      <td>GRAND TOTAL PER EQUIPMENT</td>
+      ${categories.map(cat => `
+        <td class="summary-count">${grandColumnTotals[cat] || ""}</td>
+      `).join("")}
+      <td class="summary-row-total">${grandTotal}</td>
+    </tr>
+  `;
+
+  summaryBox.innerHTML = rows;
+
+  if (grandTotalBox) {
+    grandTotalBox.textContent = grandTotal;
+  }
+}
 /* =========================
    SIGNATORIES
 ========================= */
 const personnel = {
-  batain: {
-    name: "Ma Loise Abbie O Batain",
-    rank: "SGT",
-    position: "CEIS Personnel",
-    signature: "images/signatures/batain.png"
-  },
-  calimbas: {
-    name: "ROLAND JAMES A CALIMBAS",
-    rank: "CPT",
-    position: "Assistant Director for CEIS",
-    signature: "images/signatures/calimbas.png"
-  },
-  liwagan: {
-    name: "MAYLENE B LIW-AGAN",
-    rank: "MAJ",
-    position: "Director for CEIS",
-    signature: "images/signatures/liw-agan.png"
-  },
-  camarillo: {
-    name: "Robert Jhon R Camarillo",
-    rank: "SGT",
-    position: "CEIS Personnel",
-    signature: "images/signatures/camarillo.png"
-  },
-  bantang: {
-    name: "Ian Gabriel B Bantang",
-    rank: "A1C",
-    position: "CEIS Personnel",
-    signature: "images/signatures/bantang.png"
-  },
-  javillo: {
-    name: "Victor D Javillo",
-    rank: "AM",
-    position: "CEIS Personnel",
-    signature: "images/signatures/javillo.png"
-  },
-  bogac: {
-    name: "Love Joy S Bog-ac",
-    rank: "AW",
-    position: "CEIS Personnel",
-    signature: "images/signatures/bog-ac.png"
-  },
-  pacleb: {
-    name: "Jayson Carl W Pacleb",
-    rank: "AM",
-    position: "CEIS Personnel",
-    signature: "images/signatures/pacleb.png"
-  },
-  domingo: {
-    name: "Joshua M Domingo",
-    rank: "AM",
-    position: "CEIS Personnel",
-    signature: "images/signatures/domingo.png"
-  },
-  palomo: {
-    name: "Alexander C Palomo",
-    rank: "AM",
-    position: "CEIS Personnel",
-    signature: "images/signatures/palomo.png"
-  }
+  batain: { name: "Ma Loise Abbie O Batain", rank: "SGT", position: "CEIS Personnel", signature: "images/signatures/batain.png" },
+  calimbas: { name: "ROLAND JAMES A CALIMBAS", rank: "CPT", position: "Assistant Director for CEIS", signature: "images/signatures/calimbas.png" },
+  liwagan: { name: "MAYLENE B LIW-AGAN", rank: "MAJ", position: "Director for CEIS", signature: "images/signatures/liw-agan.png" },
+  camarillo: { name: "Robert Jhon R Camarillo", rank: "SGT", position: "CEIS Personnel", signature: "images/signatures/camarillo.png" },
+  bantang: { name: "Ian Gabriel B Bantang", rank: "A1C", position: "CEIS Personnel", signature: "images/signatures/bantang.png" },
+  javillo: { name: "Victor D Javillo", rank: "AM", position: "CEIS Personnel", signature: "images/signatures/javillo.png" },
+  bogac: { name: "Love Joy S Bog-ac", rank: "AW", position: "CEIS Personnel", signature: "images/signatures/bog-ac.png" },
+  pacleb: { name: "Jayson Carl W Pacleb", rank: "AM", position: "CEIS Personnel", signature: "images/signatures/pacleb.png" },
+  domingo: { name: "Joshua M Domingo", rank: "AM", position: "CEIS Personnel", signature: "images/signatures/domingo.png" },
+  palomo: { name: "Alexander C Palomo", rank: "AM", position: "CEIS Personnel", signature: "images/signatures/palomo.png" }
 };
 
 function selectPrepared() {
@@ -1329,35 +1311,11 @@ function selectChecked() {
 }
 
 function selectPreparedBorrow() {
-  const el = $("preparedName");
-  if (!el) return;
-
-  const key = el.value;
-  if (!personnel[key]) return;
-
-  const p = personnel[key];
-  setText("preparedPrintName", p.name);
-  setText("preparedPrintRank", p.rank);
-  setText("preparedPrintPosition", p.position);
-  setImage("preparedSignatureImg", p.signature);
-
-  localStorage.setItem("preparedBy", JSON.stringify(p));
+  selectPrepared();
 }
 
 function selectCheckedBorrow() {
-  const el = $("checkedName");
-  if (!el) return;
-
-  const key = el.value;
-  if (!personnel[key]) return;
-
-  const p = personnel[key];
-  setText("checkedPrintName", p.name);
-  setText("checkedPrintRank", p.rank);
-  setText("checkedPrintPosition", p.position);
-  setImage("checkedSignatureImg", p.signature);
-
-  localStorage.setItem("checkedBy", JSON.stringify(p));
+  selectChecked();
 }
 
 function loadSignatories() {
@@ -1373,9 +1331,7 @@ function loadSignatories() {
     const preparedSelect = $("preparedName");
     if (preparedSelect) {
       const foundKey = Object.keys(personnel).find(
-        key =>
-          personnel[key].name === prepared.name &&
-          personnel[key].rank === prepared.rank
+        key => personnel[key].name === prepared.name && personnel[key].rank === prepared.rank
       );
       if (foundKey) preparedSelect.value = foundKey;
     }
@@ -1390,9 +1346,7 @@ function loadSignatories() {
     const checkedSelect = $("checkedName");
     if (checkedSelect) {
       const foundKey = Object.keys(personnel).find(
-        key =>
-          personnel[key].name === checked.name &&
-          personnel[key].rank === checked.rank
+        key => personnel[key].name === checked.name && personnel[key].rank === checked.rank
       );
       if (foundKey) checkedSelect.value = foundKey;
     }
@@ -1402,34 +1356,86 @@ function loadSignatories() {
 /* =========================
    FILTERS
 ========================= */
+
+function getActiveInventoryFilters() {
+  return {
+    category: $("filterCategory") ? $("filterCategory").value.trim() : "",
+    unit: $("filterUnit") ? $("filterUnit").value.trim() : "",
+    search: $("searchInput") ? $("searchInput").value.toLowerCase().trim() : "",
+    column: $("searchColumn") ? $("searchColumn").value : "all"
+  };
+}
+
+function buildSearchableItem(item) {
+  const parsed = parseUnitDisplay(item.unit || "");
+
+  return {
+    ...item,
+    unit_only: parsed.unit,
+    office: parsed.office,
+    date_issued_display: formatMonthYearDisplay(item.date_issued)
+  };
+}
+
+function smartTextMatch(text, search) {
+  const source = String(text ?? "").toLowerCase();
+  const words = search.split(/\s+/).filter(Boolean);
+
+  return words.every(word => source.includes(word));
+}
+
+function applyInventoryFilters() {
+  const { category, unit, search, column } = getActiveInventoryFilters();
+
+  const result = inventoryData.filter(item => {
+    const parsed = parseUnitDisplay(item.unit || "");
+    const searchableItem = buildSearchableItem(item);
+
+    const rowText = Object.values(searchableItem)
+      .map(value => String(value ?? ""))
+      .join(" ")
+      .toLowerCase();
+
+    const matchCategory =
+      !category || String(item.category || "") === category;
+
+    const matchUnit =
+      !unit ||
+      String(parsed.unit || "").toLowerCase().includes(unit.toLowerCase()) ||
+      String(parsed.office || "").toLowerCase().includes(unit.toLowerCase());
+
+    let matchSearch = true;
+
+    if (search) {
+      if (column === "all") {
+        matchSearch = smartTextMatch(rowText, search);
+      } else {
+        matchSearch = smartTextMatch(searchableItem[column], search);
+      }
+    }
+
+    return matchCategory && matchUnit && matchSearch;
+  });
+
+  const hasActiveFilter = Boolean(category || unit || search);
+
+  filteredData = hasActiveFilter ? sortInventoryAscending(result) : [];
+  renderInventoryTable(hasActiveFilter ? filteredData : inventoryData);
+}
+
+function filterInventory() {
+  applyInventoryFilters();
+}
+
 function applyFilter() {
-  const categoryEl = $("filterCategory");
-  const unitEl = $("filterUnit");
-
-  const category = categoryEl ? categoryEl.value : "";
-  const unit = unitEl ? unitEl.value : "";
-
-  filteredData = sortInventoryAscending(
-    inventoryData.filter(item => {
-      const matchCategory = !category || item.category === category;
-      const matchUnit = !unit || String(item.unit || "").startsWith(unit);
-      return matchCategory && matchUnit;
-    })
-  );
-
-  renderInventoryTable(filteredData);
+  applyInventoryFilters();
 }
 
 function resetFilter() {
-  const categoryEl = $("filterCategory");
-  const unitEl = $("filterUnit");
-  const searchInput = $("searchInput");
-  const searchColumn = $("searchColumn");
-
-  if (categoryEl) categoryEl.value = "";
-  if (unitEl) unitEl.value = "";
-  if (searchInput) searchInput.value = "";
-  if (searchColumn) searchColumn.value = "all";
+  if ($("filterCategory")) $("filterCategory").value = "";
+  if ($("filterUnit")) $("filterUnit").value = "";
+  if ($("searchInput")) $("searchInput").value = "";
+  if ($("searchColumn")) $("searchColumn").value = "all";
 
   filteredData = [];
   renderInventoryTable(inventoryData);
@@ -1449,6 +1455,7 @@ document.addEventListener("click", function (e) {
     } else {
       alert("Record not found.");
     }
+
     return;
   }
 
@@ -1501,158 +1508,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   if ($("dashboardTableBody") || $("statusChart")) {
     await loadDashboard();
   }
+
+  hideLoader();
 });
-async function exportInventoryCSV() {
-  try {
-    const response = await fetch("/api/inventory");
-
-    if (!response.ok) {
-      throw new Error("Failed to fetch inventory data.");
-    }
-
-    const inventory = await response.json();
-
-    if (!Array.isArray(inventory) || inventory.length === 0) {
-      alert("No inventory data found.");
-      return;
-    }
-
-    const headers = [
-      "NR",
-      "CATEGORY",
-      "DESCRIPTION",
-      "SERIAL NUMBER",
-      "PROPERTY NUMBER",
-      "STATUS",
-      "DATE ISSUED",
-      "UNIT",
-      "OS",
-      "WINDOWS TYPE",
-      "MS OFFICE",
-      "ANTIVIRUS",
-      "REMARKS"
-    ];
-
-    const csvRows = [];
-    csvRows.push(headers.join(","));
-
-    inventory.forEach(item => {
-      const row = [
-        item.nr ?? "",
-        item.category ?? "",
-        item.description ?? "",
-        item.serial_number ?? "",
-        item.property_number ?? "",
-        item.status ?? "",
-        item.date_issued ?? "",
-        item.unit ?? "",
-        item.os ?? "",
-        item.windows_type ?? "",
-        item.ms_office ?? "",
-        item.antivirus ?? "",
-        item.remarks ?? ""
-      ].map(value => {
-        const safeValue = String(value).replace(/"/g, '""');
-        return `"${safeValue}"`;
-      });
-
-      csvRows.push(row.join(","));
-    });
-
-    const csvContent = "\uFEFF" + csvRows.join("\n");
-    const blob = new Blob([csvContent], {
-      type: "text/csv;charset=utf-8;"
-    });
-
-    const url = window.URL.createObjectURL(blob);
-
-    const now = new Date();
-    const fileName = `inventory_report_${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}.csv`;
-
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", fileName);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    window.URL.revokeObjectURL(url);
-
-    alert("Inventory exported successfully.");
-  } catch (error) {
-    console.error("Export inventory error:", error);
-    alert("Failed to export inventory.");
-  }
-}
-async function exportBorrowCSV() {
-  try {
-    const response = await fetch("/api/borrows");
-
-    if (!response.ok) {
-      throw new Error("Failed to fetch borrow data.");
-    }
-
-    const borrows = await response.json();
-
-    if (!Array.isArray(borrows) || borrows.length === 0) {
-      alert("No borrow records found.");
-      return;
-    }
-
-    const headers = [
-      "BORROWER NAME",
-      "OFFICE / UNIT",
-      "EQUIPMENT",
-      "QUANTITY",
-      "DATE BORROWED",
-      "DATE RETURN",
-      "PURPOSE",
-      "REMARKS"
-    ];
-
-    const csvRows = [];
-    csvRows.push(headers.join(","));
-
-    borrows.forEach(item => {
-      const row = [
-        item.borrower_name ?? "",
-        item.office_unit ?? "",
-        item.equipment ?? "",
-        item.quantity ?? "",
-        item.date_borrowed ?? "",
-        item.date_return ?? "",
-        item.purpose ?? "",
-        item.remarks ?? ""
-      ].map(value => {
-        const safeValue = String(value).replace(/"/g, '""');
-        return `"${safeValue}"`;
-      });
-
-      csvRows.push(row.join(","));
-    });
-
-    const csvContent = "\uFEFF" + csvRows.join("\n");
-    const blob = new Blob([csvContent], {
-      type: "text/csv;charset=utf-8;"
-    });
-
-    const url = window.URL.createObjectURL(blob);
-
-    const now = new Date();
-    const fileName = `borrow_report_${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}.csv`;
-
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", fileName);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    window.URL.revokeObjectURL(url);
-
-    alert("Borrow records exported successfully.");
-  } catch (error) {
-    console.error("Export borrow error:", error);
-    alert("Failed to export borrow records.");
-  }
-}

@@ -1,14 +1,25 @@
 const express = require("express");
 const session = require("express-session");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 const path = require("path");
 const fs = require("fs");
 const { exec } = require("child_process");
 const { Pool } = require("pg");
 const bcrypt = require("bcryptjs");
+const multer = require("multer");
+const XLSX = require("xlsx");
 require("dotenv").config();
 
 const app = express();
+app.set("trust proxy", 1);
+
 const PORT = process.env.PORT || 3000;
+const DEFAULT_SESSION_TIMEOUT = 1000 * 60 * 30; // 30 minutes
+const DEFAULT_MAX_LOGIN_ATTEMPTS = 5;
+const LOCK_TIME = 1000 * 60 * 15; // 15 minutes
+
+const loginAttempts = new Map();
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -21,24 +32,42 @@ if (!fs.existsSync(BACKUP_DIR)) {
   fs.mkdirSync(BACKUP_DIR, { recursive: true });
 }
 
+/* =========================
+   PREMIUM SECURITY CORE
+========================= */
+app.disable("x-powered-by");
+
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false
+  })
+);
+
 app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || "ict_inventory_secret_key",
+    secret: process.env.SESSION_SECRET || "ict_inventory_secret_key_change_me",
     resave: false,
     saveUninitialized: false,
+    rolling: true,
     cookie: {
-      secure: false,
+      secure: process.env.NODE_ENV === "production",
       httpOnly: true,
-      maxAge: 1000 * 60 * 60 * 8
+      sameSite: "lax",
+      maxAge: DEFAULT_SESSION_TIMEOUT
     }
   })
 );
 
-app.use(express.static(path.join(__dirname, "public")));
-app.use("/backups", express.static(BACKUP_DIR));
+app.use((req, res, next) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+  next();
+});
 
 /* =========================
    HELPERS
@@ -137,6 +166,16 @@ function isValidRole(role) {
   return ["admin", "staff", "viewer"].includes(role);
 }
 
+function isStrongPassword(password) {
+  const value = String(password || "");
+  return (
+    value.length >= 8 &&
+    /[A-Z]/.test(value) &&
+    /[a-z]/.test(value) &&
+    /[0-9]/.test(value)
+  );
+}
+
 async function getNextNR() {
   const result = await pool.query(`
     SELECT MAX(CAST(nr AS INTEGER)) AS "maxNr"
@@ -190,6 +229,257 @@ function getPsqlPath() {
   return "C:\\Program Files\\PostgreSQL\\18\\bin\\psql.exe";
 }
 
+async function getSystemSetting(key, fallback = "") {
+  try {
+    const result = await pool.query(
+      `SELECT setting_value
+       FROM system_settings
+       WHERE setting_key = $1
+       LIMIT 1`,
+      [key]
+    );
+
+    if (result.rows.length === 0) return fallback;
+    return result.rows[0].setting_value ?? fallback;
+  } catch (error) {
+    console.error("Get system setting error:", error.message);
+    return fallback;
+  }
+}
+
+async function setSystemSetting(key, value) {
+  await pool.query(
+    `INSERT INTO system_settings (setting_key, setting_value, updated_at)
+     VALUES ($1, $2, NOW())
+     ON CONFLICT (setting_key)
+     DO UPDATE SET
+       setting_value = EXCLUDED.setting_value,
+       updated_at = NOW()`,
+    [key, value]
+  );
+}
+
+async function getAdminSettingsRow() {
+  try {
+    const result = await pool.query(`SELECT * FROM admin_settings LIMIT 1`);
+    if (result.rows.length === 0) {
+      return {
+        allow_user_creation: true,
+        allow_user_deletion: true,
+        require_strong_password: false,
+        enable_login_audit: true,
+        session_timeout: 30,
+        max_login_attempts: DEFAULT_MAX_LOGIN_ATTEMPTS
+      };
+    }
+    return result.rows[0];
+  } catch (error) {
+    return {
+      allow_user_creation: true,
+      allow_user_deletion: true,
+      require_strong_password: false,
+      enable_login_audit: true,
+      session_timeout: 30,
+      max_login_attempts: DEFAULT_MAX_LOGIN_ATTEMPTS
+    };
+  }
+}
+
+async function getSessionTimeoutMs() {
+  const settings = await getAdminSettingsRow();
+  const minutes = Number(settings.session_timeout) || 30;
+  return minutes * 60 * 1000;
+}
+
+async function getMaxLoginAttempts() {
+  const settings = await getAdminSettingsRow();
+  const max = Number(settings.max_login_attempts) || DEFAULT_MAX_LOGIN_ATTEMPTS;
+  return max > 0 ? max : DEFAULT_MAX_LOGIN_ATTEMPTS;
+}
+
+async function isLoginAuditEnabled() {
+  const settings = await getAdminSettingsRow();
+  return settings.enable_login_audit !== false;
+}
+
+async function isStrongPasswordRequired() {
+  const settings = await getAdminSettingsRow();
+  return settings.require_strong_password === true;
+}
+
+/* =========================
+   PREMIUM SECURITY HELPERS
+========================= */
+function getClientKey(req, username = "") {
+  const ip =
+    req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
+    req.socket?.remoteAddress ||
+    "unknown_ip";
+
+  return `${normalizeText(username).toLowerCase()}|${ip}`;
+}
+
+function getLoginAttempt(key) {
+  if (!loginAttempts.has(key)) {
+    loginAttempts.set(key, {
+      count: 0,
+      lockUntil: null
+    });
+  }
+  return loginAttempts.get(key);
+}
+
+function isLocked(key) {
+  const record = getLoginAttempt(key);
+
+  if (record.lockUntil && Date.now() < record.lockUntil) {
+    return true;
+  }
+
+  if (record.lockUntil && Date.now() >= record.lockUntil) {
+    record.count = 0;
+    record.lockUntil = null;
+  }
+
+  return false;
+}
+
+function recordFailedAttempt(key, maxAttempts) {
+  const record = getLoginAttempt(key);
+  record.count += 1;
+
+  if (record.count >= maxAttempts) {
+    record.lockUntil = Date.now() + LOCK_TIME;
+  }
+
+  loginAttempts.set(key, record);
+}
+
+function clearLoginAttempts(key) {
+  loginAttempts.delete(key);
+}
+
+function getRemainingLockMinutes(key) {
+  const record = getLoginAttempt(key);
+  if (!record.lockUntil) return 0;
+  return Math.ceil((record.lockUntil - Date.now()) / 60000);
+}
+
+function touchSession(req) {
+  if (req.session) {
+    req.session.lastActivity = Date.now();
+  }
+}
+
+async function sessionTimeoutGuard(req, res, next) {
+  const openPaths = [
+    "/",
+    "/login.html",
+    "/index.html",
+    "/api/login",
+    "/api/session",
+    "/api/session-check",
+    "/style.css"
+  ];
+
+  if (openPaths.includes(req.path)) {
+    return next();
+  }
+
+  if (!req.session.user) {
+    return next();
+  }
+
+  const sessionTimeout = await getSessionTimeoutMs();
+  const now = Date.now();
+  const lastActivity = req.session.lastActivity || now;
+
+  if (now - lastActivity > sessionTimeout) {
+    return req.session.destroy(() => {
+      if (req.path.startsWith("/api/")) {
+        return res.status(401).json({ error: "Session expired", expired: true });
+      }
+      return res.redirect("/login.html");
+    });
+  }
+
+  req.session.lastActivity = now;
+  next();
+}
+
+function requireAuthPage(req, res, next) {
+  const allowed = [
+    "/",
+    "/login.html",
+    "/index.html",
+    "/api/login",
+    "/api/session",
+    "/api/session-check",
+    "/style.css"
+  ];
+
+  if (allowed.includes(req.path)) {
+    return next();
+  }
+
+  if (req.session.user) {
+    return next();
+  }
+
+  if (req.path.startsWith("/api/")) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  return res.redirect("/login.html");
+}
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: "Too many login requests. Please try again later."
+  }
+});
+
+app.use(sessionTimeoutGuard);
+app.use(requireAuthPage);
+
+
+function sendProtectedPage(fileName, allowedRoles = ["admin", "staff", "viewer"]) {
+  return (req, res) => {
+    if (!req.session.user) {
+      return res.redirect("/login.html");
+    }
+
+    if (!allowedRoles.includes(req.session.user.role)) {
+      return res.redirect("/dashboard.html");
+    }
+
+    return res.sendFile(path.join(__dirname, "public", fileName));
+  };
+}
+
+app.get("/login.html", (req, res) => {
+  if (req.session.user) {
+    return res.redirect("/dashboard.html");
+  }
+
+  return res.sendFile(path.join(__dirname, "public", "login.html"));
+});
+
+app.get("/dashboard.html", sendProtectedPage("dashboard.html", ["admin", "staff", "viewer"]));
+app.get("/inventory.html", sendProtectedPage("inventory.html", ["admin", "staff", "viewer"]));
+app.get("/borrow.html", sendProtectedPage("borrow.html", ["admin", "staff", "viewer"]));
+app.get("/settings.html", sendProtectedPage("settings.html", ["admin", "staff", "viewer"]));
+app.get("/users.html", sendProtectedPage("users.html", ["admin"]));
+app.get("/logs.html", sendProtectedPage("logs.html", ["admin"]));
+app.get("/backup.html", sendProtectedPage("backup.html", ["admin", "staff"]));
+
+app.use(express.static(path.join(__dirname, "public")));
+app.use("/backups", express.static(BACKUP_DIR));
+
 /* =========================
    DATABASE INIT
 ========================= */
@@ -198,16 +488,34 @@ async function initializeDatabase() {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+        full_name TEXT,
         username TEXT UNIQUE,
+        email TEXT,
         password TEXT,
         role TEXT DEFAULT 'viewer',
+        status TEXT DEFAULT 'active',
         created_at TIMESTAMPTZ DEFAULT NOW()
       )
     `);
 
     await pool.query(`
       ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS full_name TEXT
+    `);
+
+    await pool.query(`
+      ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS email TEXT
+    `);
+
+    await pool.query(`
+      ALTER TABLE users
       ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'viewer'
+    `);
+
+    await pool.query(`
+      ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active'
     `);
 
     await pool.query(`
@@ -219,6 +527,12 @@ async function initializeDatabase() {
       UPDATE users
       SET role = 'admin'
       WHERE username = 'admin' AND (role IS NULL OR TRIM(role) = '')
+    `);
+
+    await pool.query(`
+      UPDATE users
+      SET status = 'active'
+      WHERE status IS NULL OR TRIM(status) = ''
     `);
 
     await pool.query(`
@@ -266,6 +580,32 @@ async function initializeDatabase() {
       )
     `);
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS system_settings (
+        id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+        setting_key TEXT UNIQUE,
+        setting_value TEXT,
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS admin_settings (
+        id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+        allow_user_creation BOOLEAN DEFAULT true,
+        allow_user_deletion BOOLEAN DEFAULT true,
+        require_strong_password BOOLEAN DEFAULT false,
+        enable_login_audit BOOLEAN DEFAULT true,
+        session_timeout INTEGER DEFAULT 30,
+        max_login_attempts INTEGER DEFAULT 5
+      )
+    `);
+
+    const adminSettingsCheck = await pool.query(`SELECT id FROM admin_settings LIMIT 1`);
+    if (adminSettingsCheck.rows.length === 0) {
+      await pool.query(`INSERT INTO admin_settings DEFAULT VALUES`);
+    }
+
     const existingAdmin = await pool.query(
       `SELECT * FROM users WHERE username = $1 LIMIT 1`,
       ["admin"]
@@ -274,12 +614,29 @@ async function initializeDatabase() {
     if (existingAdmin.rows.length === 0) {
       const hashedPassword = await bcrypt.hash("admin123", 10);
 
-      await pool.query(
-        `INSERT INTO users (username, password, role) VALUES ($1, $2, $3)`,
-        ["admin", hashedPassword, "admin"]
-      );
+
+const result = await pool.query(
+  `
+  INSERT INTO users
+  (username, password, role, status, full_name, email, assigned_unit, assigned_office, assigned_site)
+  VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+  RETURNING id, username, role, status, full_name, email, assigned_unit, assigned_office, assigned_site
+  `,
+  [
+    username,
+    hashedPassword,
+    role,
+    status,
+    full_name || null,
+    email || null,
+    role === "admin" ? null : assigned_unit || null,
+    role === "admin" ? null : assigned_office || null,
+    role === "admin" ? null : assigned_site || null
+  ]
+);
 
       console.log("Default user created: admin / admin123");
+
       await logActivity(
         { username: "SYSTEM", role: "system" },
         "CREATE",
@@ -306,6 +663,26 @@ async function initializeDatabase() {
           ["admin", "admin"]
         );
       }
+
+      if (!admin.status || admin.status.trim() === "") {
+        await pool.query(
+          `UPDATE users SET status = $1 WHERE username = $2`,
+          ["active", "admin"]
+        );
+      }
+    }
+
+    const existingSystemName = await pool.query(
+      `SELECT id FROM system_settings WHERE setting_key = $1 LIMIT 1`,
+      ["system_name"]
+    );
+
+    if (existingSystemName.rows.length === 0) {
+      await pool.query(
+        `INSERT INTO system_settings (setting_key, setting_value)
+         VALUES ($1, $2)`,
+        ["system_name", "ICT Inventory"]
+      );
     }
 
     console.log("Supabase/Postgres database ready.");
@@ -321,6 +698,19 @@ function requireLogin(req, res, next) {
   if (!req.session.user) {
     return res.status(401).json({ error: "Unauthorized" });
   }
+
+  touchSession(req);
+  next();
+}
+function requireAdmin(req, res, next) {
+  if (!req.session || !req.session.user) {
+    return res.status(401).json({ error: "Not logged in" });
+  }
+
+  if (req.session.user.role !== "admin") {
+    return res.status(403).json({ error: "Admin access only" });
+  }
+
   next();
 }
 
@@ -334,6 +724,7 @@ function requireRole(...allowedRoles) {
       return res.status(403).json({ error: "Forbidden" });
     }
 
+    touchSession(req);
     next();
   };
 }
@@ -345,10 +736,38 @@ app.get("/", (req, res) => {
   res.redirect("/login.html");
 });
 
-app.post("/api/login", async (req, res) => {
-  const { username, password } = req.body;
+app.post("/api/login", loginLimiter, async (req, res) => {
+  const username = normalizeText(req.body.username);
+  const password = String(req.body.password || "");
+  const attemptKey = getClientKey(req, username);
 
   try {
+    const auditEnabled = await isLoginAuditEnabled();
+    const maxAttempts = await getMaxLoginAttempts();
+
+    if (!username || !password) {
+      return res.status(400).json({
+        error: "Username and password are required"
+      });
+    }
+
+    if (isLocked(attemptKey)) {
+      const minutes = getRemainingLockMinutes(attemptKey);
+
+      if (auditEnabled) {
+        await logActivity(
+          { username: username || "UNKNOWN", role: "unknown" },
+          "LOCKED_LOGIN",
+          "AUTH",
+          `Blocked login attempt for locked key: ${attemptKey}`
+        );
+      }
+
+      return res.status(429).json({
+        error: `Too many failed login attempts. Try again in ${minutes} minute(s).`
+      });
+    }
+
     const result = await pool.query(
       `SELECT * FROM users WHERE username = $1 LIMIT 1`,
       [username]
@@ -357,42 +776,81 @@ app.post("/api/login", async (req, res) => {
     const user = result.rows[0];
 
     if (!user) {
-      await logActivity(
-        { username: username || "UNKNOWN", role: "unknown" },
-        "FAILED_LOGIN",
-        "AUTH",
-        `Failed login attempt for username: ${normalizeText(username || "UNKNOWN")}`
-      );
-      return res.status(401).json({ error: "Invalid username or password" });
+      recordFailedAttempt(attemptKey, maxAttempts);
+
+      if (auditEnabled) {
+        await logActivity(
+          { username: username || "UNKNOWN", role: "unknown" },
+          "FAILED_LOGIN",
+          "AUTH",
+          `Failed login attempt for unknown username: ${username || "UNKNOWN"}`
+        );
+      }
+
+      return res.status(401).json({
+        error: "Invalid username or password"
+      });
+    }
+
+    if ((user.status || "active").toLowerCase() !== "active") {
+      if (auditEnabled) {
+        await logActivity(
+          { username: user.username, role: user.role || "viewer" },
+          "BLOCKED_LOGIN",
+          "AUTH",
+          `Inactive account tried to login: ${user.username}`
+        );
+      }
+
+      return res.status(403).json({
+        error: "Your account is inactive. Please contact admin."
+      });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
-      await logActivity(
-        { username: user.username, role: user.role || "viewer" },
-        "FAILED_LOGIN",
-        "AUTH",
-        `Invalid password attempt for user: ${user.username}`
-      );
-      return res.status(401).json({ error: "Invalid username or password" });
+      recordFailedAttempt(attemptKey, maxAttempts);
+
+      if (auditEnabled) {
+        await logActivity(
+          { username: user.username, role: user.role || "viewer" },
+          "FAILED_LOGIN",
+          "AUTH",
+          `Invalid password attempt for user: ${user.username}`
+        );
+      }
+
+      return res.status(401).json({
+        error: "Invalid username or password"
+      });
     }
 
-    req.session.user = {
-      id: user.id,
-      username: user.username,
-      role: user.role || "viewer"
-    };
+    clearLoginAttempts(attemptKey);
 
-    await logActivity(
-      req.session.user,
-      "LOGIN",
-      "AUTH",
-      `User logged in successfully`
-    );
+   req.session.user = {
+  id: user.id,
+  username: user.username,
+  role: user.role || "staff",
+  assigned_unit: user.assigned_unit || null,
+  assigned_office: user.assigned_office || null,
+  assigned_site: user.assigned_site || null
+};
+
+    req.session.lastActivity = Date.now();
+
+    if (auditEnabled) {
+      await logActivity(
+        req.session.user,
+        "LOGIN",
+        "AUTH",
+        "User logged in successfully"
+      );
+    }
 
     res.json({
       success: true,
+      message: "Login successful",
       user: {
         id: user.id,
         username: user.username,
@@ -401,27 +859,201 @@ app.post("/api/login", async (req, res) => {
     });
   } catch (error) {
     console.error("Login error:", error.message);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: "Server error during login" });
   }
 });
 
 app.get("/api/session", (req, res) => {
   if (req.session.user) {
-    return res.json({ loggedIn: true, user: req.session.user });
+    req.session.lastActivity = Date.now();
+
+    return res.json({
+      loggedIn: true,
+      user: req.session.user
+    });
   }
-  res.json({ loggedIn: false });
+
+  res.json({
+    loggedIn: false
+  });
+});
+
+app.get("/api/session-check", (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({
+      success: false,
+      expired: true,
+      message: "Session expired"
+    });
+  }
+
+  req.session.lastActivity = Date.now();
+
+  return res.json({
+    success: true,
+    user: req.session.user
+  });
 });
 
 app.post("/api/logout", async (req, res) => {
   const currentUser = req.session.user;
 
-  if (currentUser) {
-    await logActivity(currentUser, "LOGOUT", "AUTH", "User logged out");
-  }
+  try {
+    if (currentUser) {
+      const auditEnabled = await isLoginAuditEnabled();
+      if (auditEnabled) {
+        await logActivity(currentUser, "LOGOUT", "AUTH", "User logged out");
+      }
+    }
 
-  req.session.destroy(() => {
-    res.json({ success: true });
-  });
+    req.session.destroy((err) => {
+      if (err) {
+        return res.status(500).json({ error: "Logout failed" });
+      }
+
+      res.clearCookie("connect.sid");
+      return res.json({ success: true });
+    });
+  } catch (error) {
+    console.error("Logout error:", error.message);
+    res.status(500).json({ error: "Logout failed" });
+  }
+});
+
+/* =========================
+   ADMIN SETTINGS
+========================= */
+app.get("/api/settings", requireRole("admin"), async (req, res) => {
+  try {
+    const adminResult = await pool.query(
+      `SELECT username, role, status, created_at
+       FROM users
+       WHERE username = $1
+       LIMIT 1`,
+      ["admin"]
+    );
+
+    const adminUser = adminResult.rows[0] || null;
+    const systemName = await getSystemSetting("system_name", "ICT Inventory");
+
+    res.json({
+      success: true,
+      settings: {
+        systemName,
+        adminUsername: adminUser?.username || "admin",
+        adminRole: adminUser?.role || "admin",
+        adminStatus: adminUser?.status || "active",
+        createdAt: adminUser?.created_at || null
+      }
+    });
+  } catch (error) {
+    console.error("Fetch settings error:", error.message);
+    res.status(500).json({ error: "Failed to fetch settings." });
+  }
+});
+
+app.post("/api/settings/system-name", requireRole("admin"), async (req, res) => {
+  try {
+    const systemName = normalizeText(req.body.systemName);
+
+    if (!systemName) {
+      return res.status(400).json({ error: "System name is required." });
+    }
+
+    await setSystemSetting("system_name", systemName);
+
+    await logActivity(
+      req.session.user,
+      "UPDATE",
+      "SETTINGS",
+      `Updated system name to: ${systemName}`
+    );
+
+    res.json({
+      success: true,
+      message: "System name updated successfully.",
+      systemName
+    });
+  } catch (error) {
+    console.error("Update system name error:", error.message);
+    res.status(500).json({ error: "Failed to update system name." });
+  }
+});
+
+app.post("/api/settings/change-password", requireRole("admin"), async (req, res) => {
+  try {
+    const currentPassword = String(req.body.currentPassword || "");
+    const newPassword = String(req.body.newPassword || "");
+    const confirmPassword = String(req.body.confirmPassword || "");
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({ error: "All password fields are required." });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ error: "New password and confirm password do not match." });
+    }
+
+    const strongRequired = await isStrongPasswordRequired();
+    if (strongRequired && !isStrongPassword(newPassword)) {
+      return res.status(400).json({
+        error: "New password must be at least 8 characters and include uppercase, lowercase, and number."
+      });
+    }
+
+    if (!strongRequired && newPassword.length < 6) {
+      return res.status(400).json({ error: "New password must be at least 6 characters." });
+    }
+
+    const result = await pool.query(
+      `SELECT id, username, password
+       FROM users
+       WHERE username = $1
+       LIMIT 1`,
+      ["admin"]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Admin account not found." });
+    }
+
+    const adminUser = result.rows[0];
+    const isMatch = await bcrypt.compare(currentPassword, adminUser.password);
+
+    if (!isMatch) {
+      await logActivity(
+        req.session.user,
+        "FAILED_PASSWORD_CHANGE",
+        "SETTINGS",
+        "Incorrect current password while attempting admin password change"
+      );
+
+      return res.status(400).json({ error: "Current password is incorrect." });
+    }
+
+
+    await pool.query(
+      `UPDATE users
+       SET password = $1
+       WHERE id = $2`,
+      [hashedPassword, adminUser.id]
+    );
+
+    await logActivity(
+      req.session.user,
+      "CHANGE_PASSWORD",
+      "SETTINGS",
+      "Admin password changed successfully"
+    );
+
+    res.json({
+      success: true,
+      message: "Admin password updated successfully."
+    });
+  } catch (error) {
+    console.error("Change password error:", error.message);
+    res.status(500).json({ error: "Failed to change password." });
+  }
 });
 
 /* =========================
@@ -430,7 +1062,9 @@ app.post("/api/logout", async (req, res) => {
 app.get("/api/users", requireRole("admin"), async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT id, username, role, created_at FROM users ORDER BY id ASC`
+      `SELECT id, full_name, username, email, role, status, created_at
+       FROM users
+       ORDER BY id ASC`
     );
     res.json(result.rows);
   } catch (error) {
@@ -444,6 +1078,12 @@ app.post("/api/users", requireRole("admin"), async (req, res) => {
     const username = normalizeText(req.body.username);
     const password = String(req.body.password || "").trim();
     const role = normalizeText(req.body.role).toLowerCase() || "viewer";
+    const status = normalizeText(req.body.status || "active").toLowerCase() || "active";
+    const full_name = normalizeText(req.body.full_name);
+    const email = normalizeText(req.body.email);
+    const assigned_unit = normalizeText(req.body.assigned_unit);
+const assigned_office = normalizeText(req.body.assigned_office);
+const assigned_site = normalizeText(req.body.assigned_site);
 
     if (!username || !password) {
       return res.status(400).json({ error: "Username and password are required." });
@@ -453,29 +1093,55 @@ app.post("/api/users", requireRole("admin"), async (req, res) => {
       return res.status(400).json({ error: "Invalid role." });
     }
 
+    if (!["active", "inactive"].includes(status)) {
+      return res.status(400).json({ error: "Invalid status." });
+    }
+
+    const settings = await getAdminSettingsRow();
+    if (settings.allow_user_creation === false) {
+      return res.status(403).json({ error: "User creation is disabled in admin settings." });
+    }
+
+    if (settings.require_strong_password === true && !isStrongPassword(password)) {
+      return res.status(400).json({
+        error: "Password must be at least 8 characters and include uppercase, lowercase, and number."
+      });
+    }
+
     const existing = await pool.query(
       `SELECT id FROM users WHERE username = $1 LIMIT 1`,
       [username]
     );
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     if (existing.rows.length > 0) {
       return res.status(409).json({ error: "Username already exists." });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
 
     const result = await pool.query(
-      `INSERT INTO users (username, password, role)
-       VALUES ($1, $2, $3)
-       RETURNING id, username, role, created_at`,
-      [username, hashedPassword, role]
-    );
+  `INSERT INTO users
+   (full_name, username, email, password, role, status, assigned_unit, assigned_office, assigned_site)
+   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+   RETURNING id, full_name, username, email, role, status, assigned_unit, assigned_office, assigned_site, created_at`,
+  [
+    full_name || null,
+    username,
+    email || null,
+    hashedPassword,
+    role,
+    status,
+    role === "admin" ? null : assigned_unit || null,
+    role === "admin" ? null : assigned_office || null,
+    role === "admin" ? null : assigned_site || null
+  ]
+);
 
     await logActivity(
       req.session.user,
       "CREATE",
       "USERS",
-      `Created user: ${result.rows[0].username} with role: ${result.rows[0].role}`
+      `Created user: ${result.rows[0].username} with role: ${result.rows[0].role} and status: ${result.rows[0].status}`
     );
 
     res.json({
@@ -493,9 +1159,16 @@ app.put("/api/users/:id", requireRole("admin"), async (req, res) => {
     const { id } = req.params;
     const role = normalizeText(req.body.role).toLowerCase();
     const newPassword = String(req.body.password || "").trim();
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const status = normalizeText(req.body.status).toLowerCase();
+    const full_name = normalizeText(req.body.full_name);
+    const email = normalizeText(req.body.email);
+    const assigned_unit = normalizeText(req.body.assigned_unit);
+const assigned_office = normalizeText(req.body.assigned_office);
+const assigned_site = normalizeText(req.body.assigned_site);
 
     const existing = await pool.query(
-      `SELECT id, username, role FROM users WHERE id = $1 LIMIT 1`,
+      `SELECT id, username, role, status FROM users WHERE id = $1 LIMIT 1`,
       [id]
     );
 
@@ -504,59 +1177,82 @@ app.put("/api/users/:id", requireRole("admin"), async (req, res) => {
     }
 
     const user = existing.rows[0];
+    const updates = [];
+    const params = [];
+    let paramIndex = 1;
 
-    if (role && !isValidRole(role)) {
-      return res.status(400).json({ error: "Invalid role." });
+    if (role) {
+      if (!isValidRole(role)) {
+        return res.status(400).json({ error: "Invalid role." });
+      }
+
+      if (user.username === "admin" && role === "viewer") {
+        return res.status(400).json({ error: "Main admin cannot be downgraded to viewer." });
+      }
+
+      updates.push(`role = $${paramIndex++}`);
+      params.push(role);
     }
 
-    if (user.username === "admin" && role === "viewer") {
-      return res.status(400).json({ error: "Main admin cannot be downgraded to viewer." });
+    if (status) {
+      if (!["active", "inactive"].includes(status)) {
+        return res.status(400).json({ error: "Invalid status." });
+      }
+
+      if (user.username === "admin" && status === "inactive") {
+        return res.status(400).json({ error: "Main admin cannot be set to inactive." });
+      }
+
+      updates.push(`status = $${paramIndex++}`);
+      params.push(status);
     }
 
-    if (role && newPassword) {
+    if (full_name) {
+      updates.push(`full_name = $${paramIndex++}`);
+      params.push(full_name);
+    }
+
+    if (email) {
+      updates.push(`email = $${paramIndex++}`);
+      params.push(email);
+    }
+
+    if (newPassword) {
+      const strongRequired = await isStrongPasswordRequired();
+      if (strongRequired && !isStrongPassword(newPassword)) {
+        return res.status(400).json({
+          error: "Password must be at least 8 characters and include uppercase, lowercase, and number."
+        });
+      }
+
       const hashedPassword = await bcrypt.hash(newPassword, 10);
+      updates.push(`password = $${paramIndex++}`);
+      params.push(hashedPassword);
+    }
 
-      await pool.query(
-        `UPDATE users SET role = $1, password = $2 WHERE id = $3`,
-        [role, hashedPassword, id]
-      );
-
-      await logActivity(
-        req.session.user,
-        "UPDATE",
-        "USERS",
-        `Updated user: ${user.username}, new role: ${role}, password reset: yes`
-      );
-    } else if (role) {
-      await pool.query(`UPDATE users SET role = $1 WHERE id = $2`, [role, id]);
-
-      await logActivity(
-        req.session.user,
-        "UPDATE",
-        "USERS",
-        `Updated user: ${user.username}, new role: ${role}`
-      );
-    } else if (newPassword) {
-      const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-      await pool.query(`UPDATE users SET password = $1 WHERE id = $2`, [
-        hashedPassword,
-        id
-      ]);
-
-      await logActivity(
-        req.session.user,
-        "UPDATE",
-        "USERS",
-        `Password reset for user: ${user.username}`
-      );
-    } else {
+    if (updates.length === 0) {
       return res.status(400).json({ error: "Nothing to update." });
     }
 
+    params.push(id);
+
+    await pool.query(
+      `UPDATE users
+       SET ${updates.join(", ")}
+       WHERE id = $${paramIndex}`,
+      params
+    );
+
     const updated = await pool.query(
-      `SELECT id, username, role, created_at FROM users WHERE id = $1`,
+      `SELECT id, full_name, username, email, role, status, created_at FROM users WHERE id = $1`,
       [id]
+    );
+
+    await logActivity(
+      req.session.user,
+      "UPDATE",
+      "USERS",
+      `Updated user: ${user.username}`
     );
 
     res.json({
@@ -571,6 +1267,11 @@ app.put("/api/users/:id", requireRole("admin"), async (req, res) => {
 
 app.delete("/api/users/:id", requireRole("admin"), async (req, res) => {
   try {
+    const settings = await getAdminSettingsRow();
+    if (settings.allow_user_deletion === false) {
+      return res.status(403).json({ error: "User deletion is disabled in admin settings." });
+    }
+
     const { id } = req.params;
 
     const existing = await pool.query(
@@ -609,8 +1310,52 @@ app.delete("/api/users/:id", requireRole("admin"), async (req, res) => {
 ========================= */
 app.get("/api/inventory", requireLogin, async (req, res) => {
   try {
-    const result = await pool.query(`SELECT * FROM inventory ORDER BY id ASC`);
+    const user = req.session.user;
+
+    // 🔥 ADMIN = see all inventory
+    if (user.role === "admin") {
+      const result = await pool.query(`
+        SELECT * FROM inventory
+        ORDER BY id DESC
+      `);
+
+      return res.json(result.rows);
+    }
+
+    // 🔥 STAFF = sariling inventory lang
+    const conditions = [];
+    const values = [];
+
+    if (user.assigned_unit) {
+      values.push(user.assigned_unit);
+      conditions.push(`unit = $${values.length}`);
+    }
+
+    if (user.assigned_office) {
+      values.push(user.assigned_office);
+      conditions.push(`office = $${values.length}`);
+    }
+
+    if (user.assigned_site) {
+      values.push(user.assigned_site);
+      conditions.push(`site = $${values.length}`);
+    }
+
+    // walang assignment = walang makikita
+    if (conditions.length === 0) {
+      return res.json([]);
+    }
+
+    const query = `
+      SELECT * FROM inventory
+      WHERE ${conditions.join(" AND ")}
+      ORDER BY id DESC
+    `;
+
+    const result = await pool.query(query, values);
+
     res.json(result.rows);
+
   } catch (error) {
     console.error("Fetch inventory error:", error.message);
     res.status(500).json({ error: error.message });
@@ -874,7 +1619,8 @@ app.put("/api/borrows/:id", requireRole("admin", "staff"), async (req, res) => {
 app.put("/api/borrows/:id/return", requireRole("admin", "staff"), async (req, res) => {
   try {
     const { id } = req.params;
-    const returnDate = normalizeText(req.body.date_return) || new Date().toISOString().slice(0, 10);
+    const returnDate =
+      normalizeText(req.body.date_return) || new Date().toISOString().slice(0, 10);
     const remarks = normalizeText(req.body.remarks);
 
     const existing = await pool.query(
@@ -1190,6 +1936,219 @@ app.get("/api/test-db", async (req, res) => {
       success: false,
       error: error.message
     });
+  }
+});
+
+/* =========================
+   STEP 10F SETTINGS ROUTES
+========================= */
+
+// CURRENT USER
+// CURRENT USER
+app.get("/api/me", requireLogin, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, full_name, username, email, role, status, assigned_unit, assigned_office, assigned_site
+       FROM users
+       WHERE id = $1
+       LIMIT 1`,
+      [req.session.user.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "User not found." });
+    }
+
+    const user = result.rows[0];
+
+    req.session.user = {
+      ...req.session.user,
+      role: user.role || "staff",
+      assigned_unit: user.assigned_unit || null,
+      assigned_office: user.assigned_office || null,
+      assigned_site: user.assigned_site || null
+    };
+
+    res.json({ user });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// UPDATE ACCOUNT
+app.put("/api/me", requireLogin, async (req, res) => {
+  try {
+    const full_name = String(req.body.full_name || "").trim();
+    const username = String(req.body.username || "").trim();
+    const email = String(req.body.email || "").trim();
+
+    if (!username) {
+      return res.status(400).json({ error: "Username required." });
+    }
+
+    const duplicate = await pool.query(
+      `SELECT id FROM users WHERE username = $1 AND id <> $2 LIMIT 1`,
+      [username, req.session.user.id]
+    );
+
+    if (duplicate.rows.length > 0) {
+      return res.status(409).json({ error: "Username already taken." });
+    }
+
+    const result = await pool.query(
+      `UPDATE users
+       SET full_name = $1,
+           username = $2,
+           email = $3
+       WHERE id = $4
+       RETURNING id, full_name, username, email, role, status`,
+      [full_name, username, email, req.session.user.id]
+    );
+
+    req.session.user.username = result.rows[0].username;
+
+    await logActivity(
+      req.session.user,
+      "UPDATE",
+      "PROFILE",
+      `Updated own account profile: ${result.rows[0].username}`
+    );
+
+    res.json({
+      success: true,
+      user: result.rows[0]
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// CHANGE PASSWORD
+app.post("/api/change-password", requireLogin, async (req, res) => {
+  try {
+    const currentPassword = String(req.body.currentPassword || "");
+    const newPassword = String(req.body.newPassword || "");
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: "Current and new password are required." });
+    }
+
+    const strongRequired = await isStrongPasswordRequired();
+    if (strongRequired && !isStrongPassword(newPassword)) {
+      return res.status(400).json({
+        error: "New password must be at least 8 characters and include uppercase, lowercase, and number."
+      });
+    }
+
+    if (!strongRequired && newPassword.length < 6) {
+      return res.status(400).json({ error: "New password must be at least 6 characters." });
+    }
+
+    const userResult = await pool.query(
+      `SELECT * FROM users WHERE id = $1 LIMIT 1`,
+      [req.session.user.id]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: "User not found." });
+    }
+
+    const user = userResult.rows[0];
+    const match = await bcrypt.compare(currentPassword, user.password);
+
+    if (!match) {
+      await logActivity(
+        req.session.user,
+        "FAILED_PASSWORD_CHANGE",
+        "PROFILE",
+        "Incorrect current password"
+      );
+
+      return res.status(400).json({ error: "Current password incorrect." });
+    }
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+
+    await pool.query(
+      `UPDATE users SET password = $1 WHERE id = $2`,
+      [hashed, user.id]
+    );
+
+    await logActivity(
+      req.session.user,
+      "CHANGE_PASSWORD",
+      "PROFILE",
+      "User changed own password"
+    );
+
+    res.json({
+      success: true,
+      message: "Password updated."
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET ADMIN SETTINGS
+app.get("/api/admin/settings", requireRole("admin"), async (req, res) => {
+  try {
+    const result = await pool.query(`SELECT * FROM admin_settings LIMIT 1`);
+    const row = result.rows[0];
+
+    res.json({
+      settings: {
+        allowUserCreation: row.allow_user_creation,
+        allowUserDeletion: row.allow_user_deletion,
+        requireStrongPassword: row.require_strong_password,
+        enableLoginAudit: row.enable_login_audit,
+        sessionTimeout: row.session_timeout,
+        maxLoginAttempts: row.max_login_attempts
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// SAVE ADMIN SETTINGS
+app.put("/api/admin/settings", requireRole("admin"), async (req, res) => {
+  try {
+    const sessionTimeout = Number(req.body.sessionTimeout) || 30;
+    const maxLoginAttempts = Number(req.body.maxLoginAttempts) || 5;
+
+    await pool.query(
+      `UPDATE admin_settings
+       SET allow_user_creation = $1,
+           allow_user_deletion = $2,
+           require_strong_password = $3,
+           enable_login_audit = $4,
+           session_timeout = $5,
+           max_login_attempts = $6
+       WHERE id = 1`,
+      [
+        !!req.body.allowUserCreation,
+        !!req.body.allowUserDeletion,
+        !!req.body.requireStrongPassword,
+        !!req.body.enableLoginAudit,
+        sessionTimeout,
+        maxLoginAttempts
+      ]
+    );
+
+    await logActivity(
+      req.session.user,
+      "UPDATE",
+      "ADMIN_SETTINGS",
+      `Updated admin security settings: timeout=${sessionTimeout} mins, maxLoginAttempts=${maxLoginAttempts}`
+    );
+
+    res.json({
+      success: true,
+      message: "Admin settings saved."
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 

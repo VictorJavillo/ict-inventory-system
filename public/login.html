@@ -16,43 +16,64 @@
 
       <form id="loginForm">
         <div class="mb-16">
-          <label>Username</label>
-          <input type="text" id="username" class="input" placeholder="Enter username" required />
+          <label for="username">Username</label>
+          <input type="text" id="username" class="input" placeholder="Enter username" autocomplete="username" required />
         </div>
 
         <div class="mb-16">
-          <label>Password</label>
-          <input type="password" id="password" class="input" placeholder="Enter password" required />
+          <label for="password">Password</label>
+          <input type="password" id="password" class="input" placeholder="Enter password" autocomplete="current-password" required />
         </div>
 
-        <button type="submit" class="btn btn-primary" style="width:100%;">Login</button>
+        <button type="submit" class="btn btn-primary" style="width:100%;" id="loginBtn">Login</button>
       </form>
 
-      <p class="small mt-16 center">Default login: admin / admin123</p>
       <p id="loginMsg" class="small center mt-16"></p>
     </div>
   </div>
 
   <script>
-    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+    const loginForm = document.getElementById("loginForm");
+    const loginMsg = document.getElementById("loginMsg");
+    const loginBtn = document.getElementById("loginBtn");
+
+    async function quickSessionCheck() {
+      try {
+        const res = await fetch("/api/session", { method: "GET", credentials: "include" });
+        const data = await res.json();
+        if (data.loggedIn) window.location.href = "/dashboard.html";
+      } catch (err) {
+        console.error("Session check failed:", err);
+      }
+    }
+
+    quickSessionCheck();
+
+    loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
+      loginMsg.textContent = "";
+      loginBtn.disabled = true;
+      loginBtn.textContent = "Logging in...";
 
-      const username = document.getElementById("username").value;
-      const password = document.getElementById("password").value;
-      const msg = document.getElementById("loginMsg");
+      try {
+        const res = await fetch("/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            username: document.getElementById("username").value.trim(),
+            password: document.getElementById("password").value
+          })
+        });
 
-      const res = await fetch("/api/login", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ username, password })
-      });
-
-      const data = await res.json();
-
-      if (data.success) {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Login failed");
         window.location.href = "/dashboard.html";
-      } else {
-        msg.textContent = data.error || "Login failed";
+      } catch (err) {
+        loginMsg.textContent = err.message || "Server error. Please try again.";
+      } finally {
+        loginBtn.disabled = false;
+        loginBtn.textContent = "Login";
       }
     });
   </script>
