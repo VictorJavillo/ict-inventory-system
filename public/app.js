@@ -1,3 +1,99 @@
+let CURRENT_USER = null;
+
+async function loadCurrentUser() {
+  const res = await fetch("/api/me");
+
+  if (!res.ok) {
+    window.location.href = "index.html";
+    return null;
+  }
+
+ const data = await res.json();
+CURRENT_USER = data.user || data;
+
+applyRoleUI(CURRENT_USER.role);
+return CURRENT_USER;
+}
+
+function applyRoleUI(role) {
+  document.body.setAttribute("data-role", role);
+
+  const isAdmin = role === "admin";
+  const isStaff = role === "staff";
+  const isViewer = role === "viewer";
+
+  // ADMIN ONLY: users, logs, backup, signatories, admin cards
+  if (!isAdmin) {
+    document.querySelectorAll(
+      ".admin-only, .signatory-card, " +
+      'a[href="users.html"], a[href="logs.html"], a[href="backup.html"]'
+    ).forEach(el => el.style.display = "none");
+  }
+
+  // STAFF: no delete, no admin tools
+  if (isStaff) {
+    document.querySelectorAll(
+      ".delete-btn, #deleteBtn, .btn-delete"
+    ).forEach(el => el.style.display = "none");
+  }
+
+  // VIEWER: view only
+  if (isViewer) {
+    document.querySelectorAll(
+      ".edit-btn, .delete-btn, #addBtn, #deleteBtn, " +
+      ".btn-add, .btn-edit, .btn-delete, " +
+      "button[onclick*='openInventoryModal'], button[onclick*='delete']"
+    ).forEach(el => el.style.display = "none");
+
+    document.querySelectorAll("input, select, textarea, button").forEach(el => {
+      const allowButtons = [
+        "logout",
+        "print",
+        "search",
+        "filter",
+        "reset"
+      ];
+
+      const text = String(el.textContent || el.value || el.id || "").toLowerCase();
+      const id = String(el.id || "").toLowerCase();
+
+      const allowed = allowButtons.some(word => text.includes(word) || id.includes(word));
+
+      if (!allowed) {
+        el.disabled = true;
+        el.classList.add("viewer-disabled");
+      }
+    });
+  }
+
+  // role badge sa sidebar/header kung may lalagyan
+  const roleLabel = document.querySelector("#roleLabel");
+  if (roleLabel) {
+   roleLabel.textContent = (role || "viewer").toUpperCase();
+    roleLabel.className = `role-badge role-${role}`;
+  }
+}
+function applyStaffFilterLock() {
+  if (!CURRENT_USER) return;
+
+  const role = (CURRENT_USER.role || "viewer").toLowerCase();
+  const assignedUnit = CURRENT_USER.assigned_unit;
+
+  if (role === "admin") return;
+  if (!assignedUnit) return;
+
+  const filterUnit = $("filterUnit");
+  if (filterUnit) {
+    filterUnit.value = assignedUnit;
+    filterUnit.disabled = true;
+  }
+
+  const unitInput = $("unit");
+  if (unitInput) {
+    unitInput.value = assignedUnit;
+    unitInput.disabled = true;
+  }
+}
 let filteredData = [];
 let inventoryData = [];
 let statusChart;
@@ -692,7 +788,16 @@ async function loadDashboard() {
 
     const data = await safeJSON(res);
     const inventoryItems = sortInventoryAscending(Array.isArray(data.inventory) ? data.inventory : []);
+const dashboardTitle = document.querySelector(".dashboard-hero h1");
+const dashboardSubtitle = document.querySelector(".dashboard-hero p");
 
+if (CURRENT_USER && CURRENT_USER.role !== "admin") {
+  if (dashboardTitle) dashboardTitle.textContent = `${CURRENT_USER.assigned_unit} Dashboard`;
+  if (dashboardSubtitle) dashboardSubtitle.textContent = "Summary of ICT assets assigned to your unit";
+} else {
+  if (dashboardTitle) dashboardTitle.textContent = "Dashboard Overview";
+  if (dashboardSubtitle) dashboardSubtitle.textContent = "Professional summary of ICT assets and inventory records";
+}
     setText("totalAssets", data.totalAssets || inventoryItems.length);
     setText("opnlAssets", data.opnlAssets || inventoryItems.filter(item => normalizeText(item.status) === "opnl").length);
     setText("nopnlAssets", data.nopnlAssets || inventoryItems.filter(item => normalizeText(item.status) === "nopnl").length);
@@ -1102,9 +1207,22 @@ if (reportPage) {
     `;
   }).join("");
 
+  if (CURRENT_USER && CURRENT_USER.role === "admin") {
   loadSignatories();
-  await waitForPrintAssets($("printArea") || document);
+} else {
+  setText("preparedPrintName", "");
+  setText("preparedPrintRank", "");
+  setText("preparedPrintPosition", "");
+  setImage("preparedSignatureImg", "");
 
+  setText("checkedPrintName", "");
+  setText("checkedPrintRank", "");
+  setText("checkedPrintPosition", "");
+  setImage("checkedSignatureImg", "");
+}
+
+await waitForPrintAssets($("printArea") || document);
+setTimeout(() => window.print(), 250);
   setTimeout(() => window.print(), 250);
 }
 
@@ -1119,7 +1237,36 @@ function printBorrow() {
 /* =========================
    PRINT SUMMARY (NEW)
 ========================= */
+const customUnitOrder = [
+  "DWC",
+  "ODO",
+  "WOC",
+  "HAS",
+  "ODP",
+  "ODI",
+  "CEISO",
+  "OFM",
+  "ODL",
+  "WPM",
+  "OESPA",
+  "WIGO",
+  "PAO",
+  "OWSM",
+  "SAO",
+  "WADJ",
+  "WSO",
+  "WSM",
 
+  // SITES
+  "581ACWG",
+  "582ACWG",
+  "583ACWG",
+  "584ACWG",
+  "586ACWG",
+  "586MCRS",
+  "588RMSS",
+  "589ABMS"
+];
 function generatePrintSummary(data) {
   const summaryBox = $("printSummaryBody");
   const grandTotalBox = $("printGrandTotal");
@@ -1143,15 +1290,7 @@ function generatePrintSummary(data) {
     "Others"
   ];
 
-  const siteOrder = [
-    "581ACWG",
-    "582ACWG",
-    "583ACWG",
-    "584ACWG",
-    "586MCRS",
-    "588RMSS",
-    "589ABMS"
-  ];
+  
 
   const summary = {};
   const grandColumnTotals = {};
@@ -1184,20 +1323,21 @@ function generatePrintSummary(data) {
     grandTotal++;
   });
 
-  function sortSites(a, b) {
-    const aIndex = siteOrder.indexOf(a);
-    const bIndex = siteOrder.indexOf(b);
+  
+  let rows = "";
+
+  Object.keys(summary)
+  .sort((a, b) => {
+    const aIndex = customUnitOrder.indexOf(a);
+    const bIndex = customUnitOrder.indexOf(b);
 
     if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
     if (aIndex !== -1) return -1;
     if (bIndex !== -1) return 1;
 
     return a.localeCompare(b);
-  }
-
-  let rows = "";
-
-  Object.keys(summary).sort(sortSites).forEach(site => {
+  })
+  .forEach(site => {
     const siteColumnTotals = {};
     categories.forEach(cat => siteColumnTotals[cat] = 0);
 
@@ -1385,7 +1525,11 @@ function smartTextMatch(text, search) {
 }
 
 function applyInventoryFilters() {
-  const { category, unit, search, column } = getActiveInventoryFilters();
+  let { category, unit, search, column } = getActiveInventoryFilters();
+
+  if (CURRENT_USER && CURRENT_USER.role !== "admin" && CURRENT_USER.assigned_unit) {
+    unit = CURRENT_USER.assigned_unit;
+  }
 
   const result = inventoryData.filter(item => {
     const parsed = parseUnitDisplay(item.unit || "");
@@ -1467,8 +1611,10 @@ document.addEventListener("click", function (e) {
 });
 
 document.addEventListener("DOMContentLoaded", async () => {
-  await checkSession();
 
+  await loadCurrentUser(); // ✅ ADD MO ITO SA UNANG LINE
+  await checkSession();
+  applyStaffFilterLock();
   const inventoryForm = $("inventoryForm");
   if (inventoryForm && !inventoryForm.dataset.bound) {
     inventoryForm.addEventListener("submit", saveInventoryForm);
@@ -1495,10 +1641,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     handleUnitOfficeLogic();
   }
 
-  if ($("inventoryTableBody")) {
-    await loadInventory();
-    loadSignatories();
-  }
+ if ($("inventoryTableBody")) {
+  await loadInventory();
+  applyStaffFilterLock();   // ✅ ADD
+  applyInventoryFilters();  // ✅ ADD
+  loadSignatories();
+}
 
   if ($("borrowTableBody")) {
     await loadBorrows();

@@ -4001,3 +4001,54 @@ input[type="password"]:focus,
     grid-template-columns: 1fr;
   }
 }
+/* =========================
+   STEP 11C PREMIUM ROLE UI
+========================= */
+
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.08);
+  color: #e5e7eb;
+}
+
+.role-admin {
+  background: linear-gradient(135deg, rgba(59,130,246,.35), rgba(147,51,234,.35));
+  color: #bfdbfe;
+}
+
+.role-staff {
+  background: linear-gradient(135deg, rgba(34,197,94,.28), rgba(20,184,166,.25));
+  color: #bbf7d0;
+}
+
+.role-viewer {
+  background: linear-gradient(135deg, rgba(245,158,11,.28), rgba(249,115,22,.25));
+  color: #fde68a;
+}
+
+.viewer-disabled {
+  opacity: .55;
+  cursor: not-allowed !important;
+}
+
+body[data-role="staff"] .admin-only,
+body[data-role="viewer"] .admin-only,
+body[data-role="staff"] .signatory-card,
+body[data-role="viewer"] .signatory-card {
+  display: none !important;
+}
+
+body[data-role="staff"] .delete-btn,
+body[data-role="viewer"] .delete-btn,
+body[data-role="viewer"] .edit-btn {
+  display: none !important;
+}

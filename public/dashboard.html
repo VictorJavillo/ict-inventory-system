@@ -16,22 +16,25 @@
       <div class="loader-logo">ICT</div>
       <div class="loader-title">ICT Inventory System</div>
       <div class="loader-subtitle">Loading dashboard, please wait...</div>
-      <div class="loader-bar"><span></span></div>
+      <div class="loader-bar  "><span></span></div>
     </div>
   </div>
 
   <div class="layout">
     <aside class="sidebar">
       <div class="brand">ICT <span>Inventory</span></div>
-      <div class="subbrand">Advanced Local System</div>
+<div class="subbrand">Advanced Local System</div>
+
+<!-- 👇 ADD MO ITO -->
+<span id="roleLabel" class="role-badge">ROLE</span>
 
       <nav class="menu">
         <a href="dashboard.html" class="active" data-nav="dashboard">Dashboard</a>
         <a href="inventory.html" data-nav="inventory">Inventory</a>
         <a href="borrow.html" data-nav="borrow">Borrow Page</a>
-        <a href="users.html" data-nav="users">Users</a>
-        <a href="logs.html" data-nav="logs">Logs</a>
-        <a href="backup.html" data-nav="backup">Backup</a>
+        <a href="users.html" data-nav="users" class="admin-only">Users</a>
+<a href="logs.html" data-nav="logs" class="admin-only">Logs</a>
+<a href="backup.html" data-nav="backup" class="admin-only">Backup</a>
         <a href="settings.html" data-nav="settings">Settings</a>
         <a href="#" onclick="logout()" data-nav="logout">Logout</a>
       </nav>

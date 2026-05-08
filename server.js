@@ -713,6 +713,21 @@ function requireAdmin(req, res, next) {
 
   next();
 }
+function requireRole(...allowedRoles) {
+  return (req, res, next) => {
+    if (!req.session || !req.session.user) {
+      return res.status(401).json({ error: "Unauthorized. Please login first." });
+    }
+
+    const role = req.session.user.role;
+
+    if (!allowedRoles.includes(role)) {
+      return res.status(403).json({ error: "Forbidden. You do not have permission." });
+    }
+
+    next();
+  };
+}
 
 function requireRole(...allowedRoles) {
   return (req, res, next) => {
@@ -854,7 +869,10 @@ app.post("/api/login", loginLimiter, async (req, res) => {
       user: {
         id: user.id,
         username: user.username,
-        role: user.role || "viewer"
+        role: user.role || "viewer",
+      assigned_unit: user.assigned_unit || null,
+    assigned_office: user.assigned_office || null,
+    assigned_site: user.assigned_site || null
       }
     });
   } catch (error) {
@@ -1059,7 +1077,7 @@ app.post("/api/settings/change-password", requireRole("admin"), async (req, res)
 /* =========================
    USER MANAGEMENT
 ========================= */
-app.get("/api/users", requireRole("admin"), async (req, res) => {
+app.get("/api/users", requireLogin, requireRole("admin"), async (req, res) => { 
   try {
     const result = await pool.query(
       `SELECT id, full_name, username, email, role, status, created_at
@@ -1321,40 +1339,18 @@ app.get("/api/inventory", requireLogin, async (req, res) => {
 
       return res.json(result.rows);
     }
+    // 🔒 STAFF = see only assigned unit
+const result = await pool.query(
+  `
+  SELECT *
+  FROM inventory
+  WHERE unit = $1
+  ORDER BY id DESC
+  `,
+  [user.assigned_unit]
+);
 
-    // 🔥 STAFF = sariling inventory lang
-    const conditions = [];
-    const values = [];
-
-    if (user.assigned_unit) {
-      values.push(user.assigned_unit);
-      conditions.push(`unit = $${values.length}`);
-    }
-
-    if (user.assigned_office) {
-      values.push(user.assigned_office);
-      conditions.push(`office = $${values.length}`);
-    }
-
-    if (user.assigned_site) {
-      values.push(user.assigned_site);
-      conditions.push(`site = $${values.length}`);
-    }
-
-    // walang assignment = walang makikita
-    if (conditions.length === 0) {
-      return res.json([]);
-    }
-
-    const query = `
-      SELECT * FROM inventory
-      WHERE ${conditions.join(" AND ")}
-      ORDER BY id DESC
-    `;
-
-    const result = await pool.query(query, values);
-
-    res.json(result.rows);
+res.json(result.rows);
 
   } catch (error) {
     console.error("Fetch inventory error:", error.message);
@@ -1365,6 +1361,9 @@ app.get("/api/inventory", requireLogin, async (req, res) => {
 app.post("/api/inventory", requireRole("admin", "staff"), async (req, res) => {
   try {
     const payload = sanitizeInventoryPayload(req.body);
+    if (req.session.user.role !== "admin") {
+  payload.unit = req.session.user.assigned_unit;
+}
     const finalNr = payload.nr !== "" ? payload.nr : String(await getNextNR());
 
     const result = await pool.query(
@@ -1408,6 +1407,9 @@ app.put("/api/inventory/:id", requireRole("admin", "staff"), async (req, res) =>
 
   try {
     const payload = sanitizeInventoryPayload(req.body);
+    if (req.session.user.role !== "admin") {
+  payload.unit = req.session.user.assigned_unit;
+}
 
     const existingResult = await pool.query(
       `SELECT * FROM inventory WHERE id = $1 LIMIT 1`,
@@ -1520,8 +1522,32 @@ app.delete("/api/inventory/:id", requireRole("admin"), async (req, res) => {
 ========================= */
 app.get("/api/borrows", requireLogin, async (req, res) => {
   try {
-    const result = await pool.query(`SELECT * FROM borrows ORDER BY id ASC`);
-    res.json(result.rows);
+    const user = req.session.user;
+
+    if (user.role === "admin") {
+      const result = await pool.query(`
+        SELECT * FROM borrows
+        ORDER BY id ASC
+      `);
+
+      return res.json(result.rows);
+    }
+
+    if (!user.assigned_unit) {
+      return res.json([]);
+    }
+
+    const result = await pool.query(
+      `
+      SELECT *
+      FROM borrows
+      WHERE office_unit ILIKE $1
+      ORDER BY id ASC
+      `,
+      [user.assigned_unit + "%"]
+    );
+
+    return res.json(result.rows);
   } catch (error) {
     console.error("Fetch borrows error:", error.message);
     res.status(500).json({ error: error.message });
@@ -1701,7 +1727,38 @@ app.delete("/api/borrows/:id", requireRole("admin"), async (req, res) => {
 ========================= */
 app.get("/api/stats", requireLogin, async (req, res) => {
   try {
-    const inventoryResult = await pool.query(`SELECT * FROM inventory`);
+    const user = req.session.user;
+
+    let inventoryResult;
+
+    // 🔥 ADMIN = all
+    if (user.role === "admin") {
+      inventoryResult = await pool.query(`
+        SELECT * FROM inventory
+      `);
+    } 
+    // 🔒 STAFF = sariling unit lang
+    else {
+      if (!user.assigned_unit) {
+        return res.json({
+          totalAssets: 0,
+          opnlAssets: 0,
+          nopnlAssets: 0,
+          borrowedAssets: 0,
+          inventory: []
+        });
+      }
+
+      inventoryResult = await pool.query(
+        `
+        SELECT *
+        FROM inventory
+        WHERE SPLIT_PART(unit, ' - ', 1) = $1
+`,
+[user.assigned_unit + "%"]
+      );
+    }
+
     const borrowResult = await pool.query(`SELECT * FROM borrows`);
 
     const inventoryRows = inventoryResult.rows;
@@ -1709,19 +1766,19 @@ app.get("/api/stats", requireLogin, async (req, res) => {
 
     const stats = {
       totalAssets: inventoryRows.length,
-      opnlAssets: inventoryRows.filter((i) => i.status === "OPNL").length,
-      nopnlAssets: inventoryRows.filter((i) => i.status === "NOPNL").length,
+      opnlAssets: inventoryRows.filter(i => i.status === "OPNL").length,
+      nopnlAssets: inventoryRows.filter(i => i.status === "NOPNL").length,
       borrowedAssets: borrowRows.length,
       inventory: inventoryRows
     };
 
     res.json(stats);
+
   } catch (error) {
     console.error("Stats error:", error.message);
     res.status(500).json({ error: error.message });
   }
 });
-
 /* =========================
    FILTERS
 ========================= */
@@ -1771,7 +1828,7 @@ app.get("/api/activity-logs", requireRole("admin"), async (req, res) => {
   }
 });
 
-app.get("/api/logs", requireRole("admin"), async (req, res) => {
+app.get("/api/logs", requireLogin, requireRole("admin"), async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT *
@@ -1790,7 +1847,7 @@ app.get("/api/logs", requireRole("admin"), async (req, res) => {
 /* =========================
    BACKUP ROUTES
 ========================= */
-app.post("/api/backup", requireRole("admin", "staff"), async (req, res) => {
+app.post("/api/backup", requireLogin, requireRole("admin"), async (req, res) => {
   try {
     if (!process.env.DATABASE_URL) {
       return res.status(500).json({ error: "DATABASE_URL is not configured." });
@@ -1865,7 +1922,7 @@ app.get("/api/backups", requireRole("admin", "staff"), async (req, res) => {
   }
 });
 
-app.post("/api/restore", requireRole("admin"), async (req, res) => {
+app.post("/api/restore", requireLogin, requireRole("admin"), async (req, res) => {
   try {
     const fileName = normalizeText(req.body.file);
 

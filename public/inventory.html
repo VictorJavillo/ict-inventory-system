@@ -17,9 +17,9 @@
         <a href="dashboard.html">Dashboard</a>
         <a href="inventory.html" class="active">Inventory</a>
         <a href="borrow.html">Borrow Page</a>
-        <a href="users.html">Users</a>
-        <a href="logs.html">Logs</a>
-        <a href="backup.html">Backup</a>
+       <a href="users.html" class="admin-only">Users</a>
+<a href="logs.html" class="admin-only">Logs</a>
+<a href="backup.html" class="admin-only">Backup</a>
         <a href="settings.html">Settings</a>
         <a href="#" onclick="logout()">Logout</a>
       </nav>
@@ -39,7 +39,7 @@
         </div>
       </div>
 
-      <div class="card keep-print signatory-card mb-20">
+      <div class="card keep-print signatory-card mb-20 admin-only">
         <div class="section-title">Print Signatories</div>
 
         <div class="form-grid signatory-grid">
