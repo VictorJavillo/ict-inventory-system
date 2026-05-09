@@ -373,14 +373,16 @@ function touchSession(req) {
 
 async function sessionTimeoutGuard(req, res, next) {
   const openPaths = [
-    "/",
-    "/login.html",
-    "/index.html",
-    "/api/login",
-    "/api/session",
-    "/api/session-check",
-    "/style.css"
-  ];
+  "/",
+  "/login.html",
+  "/index.html",
+  "/manifest.json",
+  "/service-worker.js",
+  "/api/login",
+  "/api/session",
+  "/api/session-check",
+  "/style.css"
+];
 
   if (openPaths.includes(req.path)) {
     return next();
@@ -409,14 +411,16 @@ async function sessionTimeoutGuard(req, res, next) {
 
 function requireAuthPage(req, res, next) {
   const allowed = [
-    "/",
-    "/login.html",
-    "/index.html",
-    "/api/login",
-    "/api/session",
-    "/api/session-check",
-    "/style.css"
-  ];
+  "/",
+  "/login.html",
+  "/index.html",
+  "/manifest.json",
+  "/service-worker.js",
+  "/api/login",
+  "/api/session",
+  "/api/session-check",
+  "/style.css"
+];
 
   if (allowed.includes(req.path)) {
     return next();
@@ -445,6 +449,15 @@ const loginLimiter = rateLimit({
 
 app.use(sessionTimeoutGuard);
 app.use(requireAuthPage);
+
+app.get("/manifest.json", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "manifest.json"));
+});
+
+app.get("/service-worker.js", (req, res) => {
+  res.setHeader("Content-Type", "application/javascript");
+  res.sendFile(path.join(__dirname, "public", "service-worker.js"));
+});
 
 
 function sendProtectedPage(fileName, allowedRoles = ["admin", "staff", "viewer"]) {

@@ -1,0 +1,21 @@
+{
+  "name": "ICT Inventory System",
+  "short_name": "ICT Inventory",
+  "start_url": "/login.html",
+  "display": "standalone",
+  "background_color": "#07111f",
+  "theme_color": "#07111f",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/images/paf-logo-left.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/images/paf-logo-left.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

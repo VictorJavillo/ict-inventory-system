@@ -1223,7 +1223,7 @@ if (reportPage) {
 
 await waitForPrintAssets($("printArea") || document);
 setTimeout(() => window.print(), 250);
-  setTimeout(() => window.print(), 250);
+
 }
 
 function printBorrow() {
@@ -1237,6 +1237,88 @@ function printBorrow() {
 /* =========================
    PRINT SUMMARY (NEW)
 ========================= */
+function generateLastPageMatrixSummary(data) {
+  const categoryCount = {};
+  let grandTotal = 0;
+
+  data.forEach(item => {
+    const category =
+      item.category ||
+      item.equipment ||
+      item.equipment_type ||
+      item.equipmentName ||
+      item.type ||
+      "Uncategorized";
+
+    categoryCount[category] = (categoryCount[category] || 0) + 1;
+    grandTotal++;
+  });
+
+  const sortedCategories = Object.keys(categoryCount).sort((a, b) =>
+    a.localeCompare(b)
+  );
+
+  return `
+    <div class="print-last-page">
+
+      <div class="last-page-title">
+        ICT EQUIPMENT SUMMARY
+      </div>
+
+      <table class="last-page-matrix">
+        <thead>
+          <tr>
+            <th colspan="2">TOTAL</th>
+            <th>PENDING FOR TURN-IN</th>
+            <th>Awaiting PTR from SAO</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          ${sortedCategories.map(category => `
+            <tr>
+              <td>${category}</td>
+              <td>${categoryCount[category]}</td>
+              <td>-</td>
+              <td>-</td>
+            </tr>
+          `).join("")}
+          <tr class="last-page-total-row">
+  <td>GRAND TOTAL</td>
+  <td>${grandTotal}</td>
+  <td>-</td>
+  <td>-</td>
+</tr>
+        </tbody>
+      </table>
+
+<div class="last-page-signatures">
+  <div class="last-sig-box">
+    <div class="last-sig-label">Prepared by:</div>
+    <img id="preparedSignatureImg" class="last-sig-img" alt="Prepared Signature" />
+    <div class="last-sig-name" id="preparedPrintName"></div>
+    <div class="last-sig-rank">
+      <span id="preparedPrintRank"></span>
+      <span>PAF</span>
+    </div>
+    <div class="last-sig-position" id="preparedPrintPosition"></div>
+  </div>
+
+  <div class="last-sig-box right">
+    <div class="last-sig-label">Certified Correct by:</div>
+    <img id="checkedSignatureImg" class="last-sig-img" alt="Checked Signature" />
+    <div class="last-sig-name" id="checkedPrintName"></div>
+    <div class="last-sig-rank">
+      <span id="checkedPrintRank"></span>
+      <span>PAF</span>
+    </div>
+    <div class="last-sig-position" id="checkedPrintPosition"></div>
+  </div>
+</div>
+
+</div>
+`;
+}
 const customUnitOrder = [
   "DWC",
   "ODO",
@@ -1400,8 +1482,15 @@ function generatePrintSummary(data) {
 
   summaryBox.innerHTML = rows;
 
-  if (grandTotalBox) {
+   if (grandTotalBox) {
     grandTotalBox.textContent = grandTotal;
+  }
+
+  const lastPageContainer = $("printLastPage");
+
+  if (lastPageContainer) {
+    lastPageContainer.innerHTML =
+      generateLastPageMatrixSummary(data);
   }
 }
 /* =========================
@@ -1658,4 +1747,28 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   hideLoader();
+});
+
+/* =========================
+   MOBILE NAV ACTIVE
+========================= */
+
+document.addEventListener("DOMContentLoaded", () => {
+
+  const currentPage =
+    window.location.pathname.split("/").pop();
+
+  document.querySelectorAll(".mobile-nav-item")
+    .forEach(item => {
+
+      const href = item.getAttribute("href");
+
+      if (href === currentPage) {
+        item.classList.add("active");
+      } else {
+        item.classList.remove("active");
+      }
+
+    });
+
 });

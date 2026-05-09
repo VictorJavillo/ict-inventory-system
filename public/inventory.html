@@ -146,8 +146,9 @@
           <div class="small">Connected filters: Category + Office/Unit + Smart Search + Search In column</div>
         </div>
 
-        <div class="table-wrapper">
-          <table class="inventory-table">
+        <div class="mobile-table-wrap">
+  <div class="table-wrapper">
+    <table class="inventory-table">
             <thead>
               <tr>
                 <th>NR</th>
@@ -172,9 +173,9 @@
                 <td colspan="15" class="empty-state">Loading inventory records...</td>
               </tr>
             </tbody>
-          </table>
-        </div>
-      </div>
+         </table>
+  </div>
+</div>
 
       <div id="printArea" class="print-area">
         <div class="report-page">
@@ -237,46 +238,23 @@
                 
               </tfoot>
             </table>
+            <!--
             <div class="print-grand-total-final">
   <span>GRAND TOTAL</span>
   <strong id="printGrandTotal">0</strong>
   <small>ICT EQUIPMENT</small>
 </div>
-          </div>
 
-          <div class="signature-section">
-            <div class="signature-box">
-              <div class="signature-label">Prepared by:</div>
-              <div class="signature-stack">
-                <img id="preparedSignatureImg" class="sig-img" alt="Prepared Signature" />
-                <div class="sig-name" id="preparedPrintName"></div>
-                <div class="rank-line">
-                  <span id="preparedPrintRank"></span>
-                  <span>PAF</span>
-                </div>
-                <div class="sig-position" id="preparedPrintPosition"></div>
-              </div>
-            </div>
+-->          </div>
 
-            <div class="signature-box">
-              <div class="signature-label">Checked by:</div>
-              <div class="signature-stack">
-                <img id="checkedSignatureImg" class="sig-img" alt="Checked Signature" />
-                <div class="sig-name" id="checkedPrintName"></div>
-                <div class="rank-line">
-                  <span id="checkedPrintRank"></span>
-                  <span>PAF</span>
-                </div>
-                <div class="sig-position" id="checkedPrintPosition"></div>
-              </div>
-            </div>
-          </div>
+          
 
-          <div class="print-footer">
+                    <div class="print-footer">
             <img src="images/footer.png" class="footer-image" alt="Footer" />
           </div>
         </div>
-      </div>
+
+        <div id="printLastPage"></div>
     </main>
   </div>
 
@@ -431,5 +409,34 @@
   </div>
 
   <script src="app.js"></script>
+<!-- MOBILE BOTTOM NAV -->
+<nav class="mobile-bottom-nav">
+  <a href="dashboard.html" class="mobile-nav-item active">
+    <span>🏠</span>
+    <small>Dashboard</small>
+  </a>
+
+  <a href="inventory.html" class="mobile-nav-item">
+    <span>📦</span>
+    <small>Inventory</small>
+  </a>
+
+  <a href="borrow.html" class="mobile-nav-item">
+    <span>🔄</span>
+    <small>Borrow</small>
+  </a>
+
+  <a href="#" class="mobile-nav-item" onclick="window.print()">
+    <span>🖨</span>
+    <small>Print</small>
+  </a>
+
+  <a href="settings.html" class="mobile-nav-item">
+    <span>⚙</span>
+    <small>Settings</small>
+  </a>
+</nav>
+
+
 </body>
 </html>

@@ -21,5 +21,35 @@
   <div id="printArea" class="print-area"><div class="report-page borrow-print-page"><div class="flight-plan-top">Flight Plan 2040 Vision: A Credible and Agile Air Force Adaptable to Modern Warfare and Responsive to National and Regional Security and Development</div><div class="header-container"><img src="images/paf-logo-left.png" class="header-logo-left" alt="Left Logo" /><div class="header-text"><div class="header-title">PHILIPPINE AIR FORCE</div><div class="header-sub">580TH AIRCRAFT CONTROL AND WARNING WING</div><div class="header-subs">DIRECTORATE FOR COMMUNICATIONS, ELECTRONICS AND INFORMATION SYSTEMS OFFICE</div><div class="header-sub">Wallace Air Station, City of San Fernando, La Union</div></div><img src="images/paf-logo-right.png" class="header-logo-right" alt="Right Logo" /></div><h3 class="print-report-title">BORROWED ICT EQUIPMENT REPORT</h3><p class="print-date-line">Date Printed: <span id="printDate"></span></p><table class="print-table borrow-print-table"><thead><tr><th>No</th><th>Borrower</th><th>Office</th><th>Equipment</th><th>Quantity</th><th>Date Borrowed</th><th>Date Return</th><th>Purpose</th><th>Remarks</th></tr></thead><tbody id="printBorrowBody"></tbody></table><div class="signature-section borrow-signature-section"><div class="signature-box"><div class="signature-label">Prepared by:</div><div class="signature-stack"><img id="preparedSignatureImg" class="sig-img" alt="Prepared Signature" /><div class="sig-name" id="preparedPrintName"></div><div class="rank-line"><span id="preparedPrintRank"></span> <span>PAF</span></div><div class="sig-position" id="preparedPrintPosition"></div></div></div><div class="signature-box"><div class="signature-label">Checked by:</div><div class="signature-stack"><img id="checkedSignatureImg" class="sig-img" alt="Checked Signature" /><div class="sig-name" id="checkedPrintName"></div><div class="rank-line"><span id="checkedPrintRank"></span> <span>PAF</span></div><div class="sig-position" id="checkedPrintPosition"></div></div></div></div><div class="print-footer"><img src="images/footer.png" class="footer-image" alt="Footer" /></div></div></div>
   <script src="app.js"></script>
   <script>loadSignatories();loadBorrows();</script>
+
+<!-- MOBILE BOTTOM NAV -->
+<nav class="mobile-bottom-nav">
+  <a href="dashboard.html" class="mobile-nav-item active">
+    <span>🏠</span>
+    <small>Dashboard</small>
+  </a>
+
+  <a href="inventory.html" class="mobile-nav-item">
+    <span>📦</span>
+    <small>Inventory</small>
+  </a>
+
+  <a href="borrow.html" class="mobile-nav-item">
+    <span>🔄</span>
+    <small>Borrow</small>
+  </a>
+
+  <a href="#" class="mobile-nav-item" onclick="window.print()">
+    <span>🖨</span>
+    <small>Print</small>
+  </a>
+
+  <a href="settings.html" class="mobile-nav-item">
+    <span>⚙</span>
+    <small>Settings</small>
+  </a>
+</nav>
+
+
 </body>
 </html>
