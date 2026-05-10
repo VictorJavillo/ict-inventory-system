@@ -784,6 +784,36 @@ async function loadInventory() {
   }
 }
 
+function getOfflineRowClass(itemId) {
+  const queue = getOfflineQueue();
+
+  const found = queue.find(q =>
+    q.url && q.url.includes(`/api/inventory/${itemId}`)
+  );
+
+  if (!found) return "";
+
+  if (found.type === "delete") return "offline-delete-row";
+  return "offline-pending-row";
+}
+
+function getOfflineBadgeHTML(itemId) {
+  const queue = getOfflineQueue();
+
+  const found = queue.find(q =>
+    q.url && q.url.includes(`/api/inventory/${itemId}`)
+  );
+
+  if (!found) return "";
+
+  if (found.type === "delete") {
+    return `<span class="offline-row-badge delete">🗑 Delete Pending</span>`;
+  }
+
+  return `<span class="offline-row-badge pending">⏳ Pending Sync</span>`;
+}
+
+
 function renderInventoryTable(data) {
   const tbody = $("inventoryTableBody");
   if (!tbody) return;
@@ -802,7 +832,7 @@ const paginatedData = paginateData(sortedData);
     const parsed = parseUnitDisplay(item.unit || "");
 
     return `
-      <tr>
+      <tr class="${getOfflineRowClass(item.id)}">
         <td>${(currentPage - 1) * rowsPerPage + index + 1}</td>
 
 
@@ -850,6 +880,7 @@ const paginatedData = paginateData(sortedData);
   ${escapeHtml(item.remarks || "")}
 </td>
         <td data-label="Action" class="action-cell mobile-detail-row">
+        ${getOfflineBadgeHTML(item.id)}
 
   <button
     type="button"
@@ -1003,10 +1034,6 @@ try {
     queueOfflineInventorySave(editId, payload);
     return;
   }
-
-  const url = editId
-    ? `/api/inventory/${editId}`
-    : "/api/inventory";
 
   const url = editId
     ? `/api/inventory/${editId}`
@@ -2764,6 +2791,19 @@ async function syncOfflineQueue() {
 
   if (remainingQueue.length === 0) {
     showSyncToast("All pending changes synced.", "success");
+
+document.querySelectorAll(".offline-pending-row")
+  .forEach(row => {
+
+    row.classList.remove("offline-pending-row");
+
+    row.classList.add("offline-synced-row");
+
+    setTimeout(() => {
+      row.classList.remove("offline-synced-row");
+    }, 2200);
+
+  });
 
     if (typeof loadInventory === "function") {
       loadInventory();
