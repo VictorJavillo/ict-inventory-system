@@ -19,7 +19,7 @@ function saveOfflineQueue(queue) {
 }
 
 function addOfflineAction(action) {
-
+console.log("QUEUE LENGTH:", queue.length);
   const queue = getOfflineQueue();
 
   const newAction = {
@@ -2692,18 +2692,32 @@ function createSyncBadgeUI() {
 }
 
 function updatePendingSyncBadge() {
-  const badge = document.getElementById("syncBadge");
-  const text = document.getElementById("syncBadgeText");
+
+  const badge =
+    document.getElementById("syncBadge");
+
+  const text =
+    document.getElementById("syncBadgeText");
+
   if (!badge || !text) return;
 
   const count = getPendingCount();
 
-  if (count <= 0) {
-    badge.classList.add("hidden");
-    text.textContent = "Synced";
-  } else {
+  console.log("PENDING COUNT:", count);
+
+  if (count > 0) {
+
     badge.classList.remove("hidden");
-    text.textContent = `${count} pending`;
+
+    text.textContent =
+      `${count} pending`;
+
+  } else {
+
+    badge.classList.add("hidden");
+
+    text.textContent = "Synced";
+
   }
 }
 function showSyncToast(message, type = "info") {
