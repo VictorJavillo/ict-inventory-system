@@ -7295,3 +7295,23 @@ tr.offline-delete-row {
     filter: brightness(1);
   }
 }
+tr.offline-syncing-row {
+  background: rgba(59, 130, 246, 0.10) !important;
+  box-shadow: inset 4px 0 0 #3b82f6;
+  animation: syncingSweep 1.2s infinite ease-in-out;
+}
+
+.offline-row-badge.syncing {
+  background: rgba(59, 130, 246, 0.16);
+  color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+}
+
+@keyframes syncingSweep {
+  0%, 100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.25);
+  }
+}

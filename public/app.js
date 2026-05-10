@@ -793,7 +793,9 @@ function getOfflineRowClass(itemId) {
 
   if (!found) return "";
 
+  if (found._syncing) return "offline-syncing-row";
   if (found.type === "delete") return "offline-delete-row";
+
   return "offline-pending-row";
 }
 
@@ -805,6 +807,10 @@ function getOfflineBadgeHTML(itemId) {
   );
 
   if (!found) return "";
+
+  if (found._syncing) {
+    return `<span class="offline-row-badge syncing">🔄 Syncing</span>`;
+  }
 
   if (found.type === "delete") {
     return `<span class="offline-row-badge delete">🗑 Delete Pending</span>`;
@@ -879,29 +885,36 @@ const paginatedData = paginateData(sortedData);
         <td class= data-label="Remarks">
   ${escapeHtml(item.remarks || "")}
 </td>
-        <td data-label="Action" class="action-cell mobile-detail-row">
-        ${getOfflineBadgeHTML(item.id)}
+       <td data-label="Action" class="action-cell mobile-detail-row">
 
-  <button
-    type="button"
-    class="btn btn-sm btn-warning edit-btn desktop-action"
-    data-id="${item.id}">
-    Edit
-  </button>
+  ${getOfflineBadgeHTML(item.id)}
 
-  <button
-    type="button"
-    class="btn btn-sm btn-danger delete-btn desktop-action"
-    data-id="${item.id}">
-    Delete
-  </button>
+  ${
+    getOfflineRowClass(item.id) === "offline-delete-row"
+      ? `<button type="button" class="btn btn-sm btn-danger" disabled>Delete Queued</button>`
+      : `
+          type="button"
+          class="btn btn-sm btn-warning edit-btn desktop-action"
+          data-id="${item.id}">
+          Edit
+        </button>
 
-  <button
-    type="button"
-    class="btn btn-sm btn-primary mobile-action-btn"
-    data-id="${item.id}">
-    Actions
-  </button>
+        <button
+          type="button"
+          class="btn btn-sm btn-danger delete-btn desktop-action"
+          data-id="${item.id}">
+          Delete
+        </button>
+
+        <button
+          type="button"
+          class="btn btn-sm btn-primary mobile-action-btn"
+          data-id="${item.id}">
+          Actions
+        </button>
+      `
+      
+  }
 
 </td>
       </tr>
@@ -2757,6 +2770,10 @@ async function syncOfflineQueue() {
   const remainingQueue = [];
 
   for (const item of queue) {
+item._syncing = true;
+saveOfflineQueue(queue);
+renderInventoryTable(currentFilteredInventory.length ? currentFilteredInventory : inventoryData);
+
     try {
       const options = {
         method: item.method,
@@ -2772,17 +2789,20 @@ async function syncOfflineQueue() {
       const res = await fetch(item.url, options);
 
       if (res.status === 409) {
+        item._syncing = false;
         remainingQueue.push(item);
         showSyncToast("Conflict detected. Please review changes.", "conflict");
         continue;
       }
 
       if (!res.ok) {
+        item._syncing = false;
         remainingQueue.push(item);
         continue;
       }
 
     } catch (err) {
+      item._syncing = false;
       remainingQueue.push(item);
     }
   }
