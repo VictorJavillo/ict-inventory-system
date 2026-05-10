@@ -37,11 +37,23 @@
           <div class="subtitle">Premium smart search, connected filters, print, export, and equipment records</div>
         </div>
 
-        <div class="actions top-actions">
-          <button class="btn btn-primary" type="button" onclick="openInventoryModal()">Add Equipment</button>
-          <button class="btn btn-success" type="button" onclick="printInventoryReport()">Print Inventory</button>
-          <button class="btn btn-success" type="button" onclick="exportInventoryCSV()">Export Excel</button>
-        </div>
+       <div class="actions top-actions">
+  <button class="btn btn-primary" type="button" onclick="openInventoryModal()">Add Equipment</button>
+
+  <button class="btn btn-success" type="button" onclick="printInventoryReport()">
+    Print Inventory
+  </button>
+
+  <button class="btn btn-success" type="button" onclick="exportInventoryCSV()">
+    Export Excel
+  </button>
+
+  <!-- OFFLINE PENDING SYNC BADGE -->
+  <div id="pendingSyncBadge" class="pending-sync-badge hidden">
+    ⏳ Pending Sync:
+    <span id="pendingSyncCount">0</span>
+  </div>
+</div>
       </div>
 
       <div class="card keep-print signatory-card mb-20 admin-only">

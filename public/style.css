@@ -6930,3 +6930,35 @@ body[data-role="viewer"] .edit-btn {
   color: white;
   font-weight: 800;
 }
+/* ========================================
+   PWA OFFLINE PENDING SYNC BADGE
+======================================== */
+
+.pending-sync-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(245, 158, 11, 0.16);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.12);
+  backdrop-filter: blur(10px);
+  white-space: nowrap;
+}
+
+.pending-sync-badge.hidden {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .pending-sync-badge {
+    width: fit-content;
+    margin-top: 8px;
+    font-size: 12px;
+    padding: 7px 11px;
+  }
+}

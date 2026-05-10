@@ -1,5 +1,160 @@
 let CURRENT_USER = null;
 
+
+/* ========================================
+   OFFLINE ADD INVENTORY QUEUE
+======================================== */
+
+const OFFLINE_INVENTORY_QUEUE_KEY =
+  "ict_offline_inventory_queue";
+
+function getOfflineInventoryQueue() {
+
+  return JSON.parse(
+    localStorage.getItem(
+      OFFLINE_INVENTORY_QUEUE_KEY
+    )
+  ) || [];
+}
+
+function saveOfflineInventoryQueue(queue) {
+
+  localStorage.setItem(
+    OFFLINE_INVENTORY_QUEUE_KEY,
+    JSON.stringify(queue)
+  );
+
+  updatePendingSyncBadge();
+}
+
+function addToOfflineInventoryQueue(item) {
+
+  const queue =
+    getOfflineInventoryQueue();
+
+  queue.push({
+    id: Date.now(),
+    createdAt: new Date().toISOString(),
+    data: item
+  });
+
+  saveOfflineInventoryQueue(queue);
+
+  toastWarning(
+    "Offline Mode: Inventory saved locally."
+  );
+}
+
+function updatePendingSyncBadge() {
+
+  const badge =
+    document.getElementById(
+      "pendingSyncBadge"
+    );
+
+  const count =
+    document.getElementById(
+      "pendingSyncCount"
+    );
+
+  if (!badge || !count) return;
+
+  const pending =
+    getOfflineInventoryQueue().length;
+
+  count.textContent = pending;
+
+  if (pending > 0) {
+    badge.classList.remove("hidden");
+  } else {
+    badge.classList.add("hidden");
+  }
+}
+
+async function syncOfflineInventoryQueue() {
+
+  if (!navigator.onLine) return;
+
+  let queue =
+    getOfflineInventoryQueue();
+
+  if (queue.length === 0) {
+    updatePendingSyncBadge();
+    return;
+  }
+
+  toastInfo(
+    `Syncing ${queue.length} pending item(s)...`
+  );
+
+  const remaining = [];
+
+  for (const item of queue) {
+
+    try {
+
+      const res = await fetch(
+        "/api/inventory",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+          body: JSON.stringify(item.data)
+        }
+      );
+
+      if (!res.ok) {
+        remaining.push(item);
+      }
+
+    } catch (err) {
+
+      remaining.push(item);
+    }
+  }
+
+  saveOfflineInventoryQueue(remaining);
+
+  if (remaining.length === 0) {
+
+    toastSuccess(
+      "Offline inventory synced successfully."
+    );
+
+    loadInventory();
+
+  } else {
+
+    toastWarning(
+      `${remaining.length} item(s) still pending sync.`
+    );
+  }
+}
+
+window.addEventListener(
+  "online",
+  () => {
+
+    toastSuccess(
+      "Back Online. Syncing inventory..."
+    );
+
+    syncOfflineInventoryQueue();
+  }
+);
+
+window.addEventListener(
+  "offline",
+  () => {
+
+    toastWarning(
+      "Offline Mode Enabled."
+    );
+  }
+);
+
 async function loadCurrentUser() {
   const res = await fetch("/api/me");
 
@@ -892,9 +1047,30 @@ async function saveInventoryForm(e) {
     const url = editId ? `/api/inventory/${editId}` : "/api/inventory";
     const method = editId ? "PUT" : "POST";
 
+    if (!navigator.onLine && !editId) {
+      addToOfflineInventoryQueue(payload);
+
+      inventoryData.push({
+        ...payload,
+        id: `offline-${Date.now()}`
+      });
+
+      closeModal("inventoryModal");
+
+      const form = $("inventoryForm");
+      if (form) form.reset();
+
+      renderInventoryTable(inventoryData);
+      updatePendingSyncBadge();
+
+      return;
+    }
+
     const res = await fetch(url, {
       method,
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json"
+      },
       body: JSON.stringify(payload)
     });
 
@@ -914,8 +1090,29 @@ async function saveInventoryForm(e) {
     }
 
     await loadInventory();
+
   } catch (err) {
     console.error("Save failed:", err);
+
+    if (!editId) {
+      addToOfflineInventoryQueue(payload);
+
+      inventoryData.push({
+        ...payload,
+        id: `offline-${Date.now()}`
+      });
+
+      closeModal("inventoryModal");
+
+      const form = $("inventoryForm");
+      if (form) form.reset();
+
+      renderInventoryTable(inventoryData);
+      updatePendingSyncBadge();
+
+      return;
+    }
+
     toastError("Failed to save inventory.");
   }
 }
@@ -2074,11 +2271,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     handleUnitOfficeLogic();
   }
 
- if ($("inventoryTableBody")) {
+if ($("inventoryTableBody")) {
+  updatePendingSyncBadge();
+
   await loadInventory();
-  applyStaffFilterLock();   // ✅ ADD
-  applyInventoryFilters();  // ✅ ADD
+
+  applyStaffFilterLock();
+  applyInventoryFilters();
   loadSignatories();
+
+  syncOfflineInventoryQueue();
 }
 
   if ($("borrowTableBody")) {
