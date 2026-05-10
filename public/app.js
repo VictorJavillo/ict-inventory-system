@@ -1148,7 +1148,7 @@ updatePendingSyncBadge();
   await loadInventory();
 
 } catch (err) {
-  console.error("Delete failed, queued offline:", err);
+  console.warn("Offline delete queued:", err);
 
   addOfflineAction({
     type: "delete",
