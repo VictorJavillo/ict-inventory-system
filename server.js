@@ -567,9 +567,14 @@ async function initializeDatabase() {
         windows_type TEXT,
         ms_office TEXT,
         antivirus TEXT,
-        remarks TEXT
+       remarks TEXT,
+updated_at TIMESTAMPTZ DEFAULT NOW()
       )
     `);
+    await pool.query(`
+  ALTER TABLE inventory
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()
+`);
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS borrows (
@@ -1359,9 +1364,9 @@ app.post("/api/inventory", requireRole("admin", "staff"), async (req, res) => {
 
     const result = await pool.query(
       `INSERT INTO inventory
-      (nr, category, description, serial_number, property_number, status, date_issued, unit, os, windows_type, ms_office, antivirus, remarks)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-      RETURNING id, nr, category, description`,
+      (nr, category, description, serial_number, property_number, status, date_issued, unit, os, windows_type, ms_office, antivirus, remarks, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
+RETURNING id, nr, category, description, updated_at`,
       [
         String(finalNr),
         payload.category,
@@ -1392,7 +1397,23 @@ app.post("/api/inventory", requireRole("admin", "staff"), async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+app.get("/api/inventory/:id", requireLogin, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT * FROM inventory WHERE id = $1 LIMIT 1`,
+      [req.params.id]
+    );
 
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Record not found." });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("Fetch inventory item error:", error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
 app.put("/api/inventory/:id", requireRole("admin", "staff"), async (req, res) => {
   const { id } = req.params;
 
@@ -1412,6 +1433,19 @@ app.put("/api/inventory/:id", requireRole("admin", "staff"), async (req, res) =>
     if (!existingRow) {
       return res.status(404).json({ error: "Record not found." });
     }
+    const clientUpdatedAt = req.body.client_updated_at;
+
+if (
+  clientUpdatedAt &&
+  existingRow.updated_at &&
+  new Date(existingRow.updated_at).getTime() !== new Date(clientUpdatedAt).getTime()
+) {
+  return res.status(409).json({
+    conflict: true,
+    message: "This inventory item was changed online while you were offline.",
+    serverItem: existingRow
+  });
+}
 
     const finalNr = payload.nr !== "" ? payload.nr : existingRow.nr || "";
 
@@ -1429,9 +1463,10 @@ app.put("/api/inventory/:id", requireRole("admin", "staff"), async (req, res) =>
         windows_type = $10,
         ms_office = $11,
         antivirus = $12,
-        remarks = $13
-      WHERE id = $14
-      RETURNING id, nr, category, description`,
+        remarks = $13,
+updated_at = NOW()
+WHERE id = $14
+RETURNING id, nr, category, description, updated_at`,
       [
         finalNr,
         payload.category,
@@ -1475,7 +1510,7 @@ app.put("/api/inventory/:id", requireRole("admin", "staff"), async (req, res) =>
 app.delete("/api/inventory/:id", requireRole("admin"), async (req, res) => {
   try {
     const existing = await pool.query(
-      `SELECT id, nr, category, description FROM inventory WHERE id = $1 LIMIT 1`,
+      `SELECT id, nr, category, description, updated_at FROM inventory WHERE id = $1 LIMIT 1`,
       [req.params.id]
     );
 
@@ -1484,6 +1519,19 @@ app.delete("/api/inventory/:id", requireRole("admin"), async (req, res) => {
     }
 
     const item = existing.rows[0];
+    const clientUpdatedAt = req.body?.client_updated_at;
+
+if (
+  clientUpdatedAt &&
+  item.updated_at &&
+  new Date(item.updated_at).getTime() !== new Date(clientUpdatedAt).getTime()
+) {
+  return res.status(409).json({
+    conflict: true,
+    message: "Delete blocked. This item was changed online while you were offline.",
+    serverItem: item
+  });
+}
 
     const result = await pool.query(
       `DELETE FROM inventory WHERE id = $1 RETURNING id`,

@@ -1,174 +1,61 @@
-let CURRENT_USER = null;
+/* ===============================
+   OFFLINE QUEUE + PREMIUM SYNC UI
+================================ */
 
+const OFFLINE_QUEUE_KEY = "ict_offline_queue_v1";
 
-/* ========================================
-   OFFLINE ADD INVENTORY QUEUE
-======================================== */
-
-const OFFLINE_INVENTORY_QUEUE_KEY =
-  "ict_offline_inventory_queue";
-
-function getOfflineInventoryQueue() {
-
-  return JSON.parse(
-    localStorage.getItem(
-      OFFLINE_INVENTORY_QUEUE_KEY
-    )
-  ) || [];
+function getOfflineQueue() {
+  try {
+    const queue = JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || "[]");
+    return Array.isArray(queue) ? queue : [];
+  } catch (err) {
+    return [];
+  }
 }
 
-function saveOfflineInventoryQueue(queue) {
+function saveOfflineQueue(queue) {
+  localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
+  updatePendingSyncBadge();
+}
+
+function addOfflineAction(action) {
+
+  const queue = getOfflineQueue();
+
+  const newAction = {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    type: action.type,
+    url: action.url,
+    method: action.method,
+    body: action.body || null,
+    createdAt: new Date().toISOString()
+  };
+
+  queue.push(newAction);
 
   localStorage.setItem(
-    OFFLINE_INVENTORY_QUEUE_KEY,
+    OFFLINE_QUEUE_KEY,
     JSON.stringify(queue)
   );
 
   updatePendingSyncBadge();
-}
 
-function addToOfflineInventoryQueue(item) {
-
-  const queue =
-    getOfflineInventoryQueue();
-
-  queue.push({
-    id: Date.now(),
-    createdAt: new Date().toISOString(),
-    data: item
-  });
-
-  saveOfflineInventoryQueue(queue);
-
-  toastWarning(
-    "Offline Mode: Inventory saved locally."
-  );
-}
-
-function updatePendingSyncBadge(status = "pending") {
-
-  const badge = document.getElementById("pendingSyncBadge");
-  const count = document.getElementById("pendingSyncCount");
-
-  if (!badge || !count) return;
-
-  const pending = getOfflineInventoryQueue().length;
-
-  badge.classList.remove("hidden", "syncing", "synced");
-
-  if (status === "syncing") {
-    badge.classList.add("syncing");
-    badge.innerHTML = `🔄 Syncing...`;
-    return;
-  }
-
-  if (status === "synced") {
-    badge.classList.add("synced");
-    badge.innerHTML = `✅ Synced`;
-    
-    setTimeout(() => {
-      badge.classList.add("hidden");
-      badge.innerHTML = `⏳ Pending Sync: <span id="pendingSyncCount">0</span>`;
-    }, 3000);
-
-    return;
-  }
-
-  if (pending > 0) {
-    badge.innerHTML = `⏳ Pending Sync: <span id="pendingSyncCount">${pending}</span>`;
-    badge.classList.remove("hidden");
-  } else {
-    badge.classList.add("hidden");
-    badge.innerHTML = `⏳ Pending Sync: <span id="pendingSyncCount">0</span>`;
-  }
-}
-
-async function syncOfflineInventoryQueue() {
-
-  if (!navigator.onLine) return;
-
-  let queue =
-    getOfflineInventoryQueue();
-
-  if (queue.length === 0) {
-    updatePendingSyncBadge();
-    return;
-  }
-
-  toastInfo(
-    `Syncing ${queue.length} pending item(s)...`
-  );
-  updatePendingSyncBadge("syncing");
-
-  const remaining = [];
-
-  for (const item of queue) {
-
-    try {
-
-      const res = await fetch(
-        "/api/inventory",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json"
-          },
-          body: JSON.stringify(item.data)
-        }
-      );
-
-      if (!res.ok) {
-        remaining.push(item);
-      }
-
-    } catch (err) {
-
-      remaining.push(item);
-    }
-  }
-
-  saveOfflineInventoryQueue(remaining);
-
-  if (remaining.length === 0) {
-
-  updatePendingSyncBadge("synced");
-
-  toastSuccess(
-    "Pending inventory synced to database successfully."
+  showSyncToast(
+    `${queue.length} pending change(s).`,
+    "pending"
   );
 
-  loadInventory();
-
-} else {
-
-    toastWarning(
-      `${remaining.length} item(s) still pending sync.`
-    );
-  }
+  console.log("OFFLINE QUEUE:", queue);
 }
 
-window.addEventListener(
-  "online",
-  () => {
+function getPendingCount() {
+  return getOfflineQueue().length;
+}
 
-    toastSuccess(
-      "Back Online. Syncing inventory..."
-    );
 
-    syncOfflineInventoryQueue();
-  }
-);
+let CURRENT_USER = null;
 
-window.addEventListener(
-  "offline",
-  () => {
 
-    toastWarning(
-      "Offline Mode Enabled."
-    );
-  }
-);
 
 async function loadCurrentUser() {
   try {
@@ -1076,13 +963,36 @@ async function saveInventoryForm(e) {
     remarks: getValue("remarks")
   };
 
-  function saveOfflineAdd() {
-    addToOfflineInventoryQueue(payload);
+try {
 
-    inventoryData.push({
-      ...payload,
-      id: `offline-${Date.now()}`
+  if (!navigator.onLine) {
+
+    addOfflineAction({
+      type: editId ? "edit" : "add",
+      url: editId
+        ? `/api/inventory/${editId}`
+        : "/api/inventory",
+      method: editId ? "PUT" : "POST",
+      body: payload
     });
+
+    if (!editId) {
+      inventoryData.push({
+        ...payload,
+        id: `offline-${Date.now()}`
+      });
+    } else {
+      inventoryData = inventoryData.map(item =>
+        String(item.id) === String(editId)
+          ? { ...item, ...payload }
+          : item
+      );
+    }
+
+    localStorage.setItem(
+      "offlineInventoryCache",
+      JSON.stringify(inventoryData)
+    );
 
     closeModal("inventoryModal");
 
@@ -1090,33 +1000,52 @@ async function saveInventoryForm(e) {
     if (form) form.reset();
 
     renderInventoryTable(inventoryData);
+
     updatePendingSyncBadge();
 
-    toastWarning("Offline Mode: Inventory saved locally.");
-  }
+    toastWarning(
+      editId
+        ? "Edit queued offline."
+        : "Inventory queued offline."
+    );
 
-  if (!editId && !navigator.onLine) {
-    saveOfflineAdd();
     return;
   }
 
-  try {
-    const url = editId ? `/api/inventory/${editId}` : "/api/inventory";
-    const method = editId ? "PUT" : "POST";
+  const url = editId
+    ? `/api/inventory/${editId}`
+    : "/api/inventory";
 
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
+  const method = editId
+    ? "PUT"
+    : "POST";
+
+  const res = await fetch(url, {
+    method,
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  }); 
 
     const result = await safeJSON(res);
 
     if (!res.ok) {
       if (!editId) {
-        saveOfflineAdd();
-        return;
-      }
+    addOfflineAction({
+      type: "add",
+      url: "/api/inventory",
+      method: "POST",
+      body: payload
+    });
+
+    toastWarning("Inventory queued offline.");
+    return;
+  }
+
+  toastError(result.error || result.message || "Failed to save inventory.");
+  return;
+      
 
       toastError(result.error || result.message || "Failed to save inventory.");
       return;
@@ -1133,15 +1062,25 @@ async function saveInventoryForm(e) {
     await loadInventory();
 
   } catch (err) {
-    console.error("Save failed:", err);
+  console.error("Save failed:", err);
 
-    if (!editId) {
-      saveOfflineAdd();
-      return;
-    }
+  addOfflineAction({
+    type: editId ? "edit" : "add",
+    url: editId
+      ? `/api/inventory/${editId}`
+      : "/api/inventory",
+    method: editId ? "PUT" : "POST",
+    body: payload
+  });
 
-    toastError("Failed to save inventory.");
-  }
+  toastWarning(
+    editId
+      ? "Edit queued offline."
+      : "Inventory queued offline."
+  );
+
+  return;
+}
 }
 async function deleteInventory(id) {
   showConfirmModal({
@@ -1151,52 +1090,41 @@ async function deleteInventory(id) {
 
   onConfirm: async () => {
 
-    try {
+   try {
 
-      const res = await fetch(`/api/inventory/${id}`, {
-        method: "DELETE"
-      });
-
-      const result = await safeJSON(res);
-
-      if (!res.ok) {
-        toastError(result.error || "Failed to delete record.");
-        return;
-      }
-
-      toastWarning("Inventory item deleted.");
-
-      await loadInventory();
-
-    } catch (err) {
-      console.error("Delete failed:", err);
-      toastError("Failed to delete record.");
-    }
-
-  }
-});
-
-return;
-
-  try {
-    const res = await fetch(`/api/inventory/${id}`, {
+  if (!navigator.onLine) {
+    addOfflineAction({
+      type: "delete",
+      url: `/api/inventory/${id}`,
       method: "DELETE"
     });
 
-    const result = await safeJSON(res);
-
-    if (!res.ok) {
-      toastError(result.error || "Failed to delete record.");
-      return;
-    }
-
-    toastWarning("Inventory item deleted.");
-
-    await loadInventory();
-  } catch (err) {
-    console.error("Delete failed:", err);
-    toastError("Failed to delete record.");
+    toastWarning("Delete queued offline.");
+    return;
   }
+
+  const res = await fetch(`/api/inventory/${id}`, {
+    method: "DELETE"
+  });
+
+  const result = await safeJSON(res);
+
+  if (!res.ok) {
+    toastError(result.error || "Failed to delete record.");
+    return;
+  }
+
+  toastWarning("Inventory item deleted.");
+
+  await loadInventory();
+
+} catch (err) {
+  console.error("Delete failed:", err);
+  toastError("Failed to delete record.");
+}
+
+  }
+});
 }
 
 /* =========================
@@ -2746,4 +2674,123 @@ async function logoutUser() {
 document.addEventListener("DOMContentLoaded", function () {
   injectMobileProfileMenu();
   loadMobileProfile();
+});
+
+function createSyncBadgeUI() {
+  if (document.getElementById("syncBadge")) return;
+
+  const badge = document.createElement("div");
+  badge.id = "syncBadge";
+  badge.className = "sync-badge hidden";
+  badge.innerHTML = `
+    <span class="sync-dot"></span>
+    <span id="syncBadgeText">0 pending</span>
+  `;
+
+  document.body.appendChild(badge);
+  updatePendingSyncBadge();
+}
+
+function updatePendingSyncBadge() {
+  const badge = document.getElementById("syncBadge");
+  const text = document.getElementById("syncBadgeText");
+  if (!badge || !text) return;
+
+  const count = getPendingCount();
+
+  if (count <= 0) {
+    badge.classList.add("hidden");
+    text.textContent = "Synced";
+  } else {
+    badge.classList.remove("hidden");
+    text.textContent = `${count} pending`;
+  }
+}
+function showSyncToast(message, type = "info") {
+  const oldToast = document.querySelector(".sync-toast");
+  if (oldToast) oldToast.remove();
+
+  const toast = document.createElement("div");
+  toast.className = `sync-toast ${type}`;
+  toast.textContent = message;
+
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.classList.add("show");
+  }, 50);
+
+  setTimeout(() => {
+    toast.classList.remove("show");
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+async function syncOfflineQueue() {
+  let queue = getOfflineQueue();
+
+  if (!navigator.onLine || queue.length === 0) return;
+
+  showSyncToast("Syncing pending changes...", "syncing");
+
+  const remainingQueue = [];
+
+  for (const item of queue) {
+    try {
+      const options = {
+        method: item.method,
+        headers: {
+          "Content-Type": "application/json"
+        }
+      };
+
+      if (item.body) {
+        options.body = JSON.stringify(item.body);
+      }
+
+      const res = await fetch(item.url, options);
+
+      if (res.status === 409) {
+        remainingQueue.push(item);
+        showSyncToast("Conflict detected. Please review changes.", "conflict");
+        continue;
+      }
+
+      if (!res.ok) {
+        remainingQueue.push(item);
+        continue;
+      }
+
+    } catch (err) {
+      remainingQueue.push(item);
+    }
+  }
+
+  saveOfflineQueue(remainingQueue);
+
+  if (remainingQueue.length === 0) {
+    showSyncToast("All pending changes synced.", "success");
+
+    if (typeof loadInventory === "function") {
+      loadInventory();
+    }
+  } else {
+    showSyncToast(`${remainingQueue.length} change(s) still pending.`, "pending");
+  }
+}
+document.addEventListener("DOMContentLoaded", () => {
+  createSyncBadgeUI();
+  updatePendingSyncBadge();
+
+  if (navigator.onLine) {
+    syncOfflineQueue();
+  }
+});
+
+window.addEventListener("online", () => {
+  showSyncToast("Back online. Auto-sync started.", "syncing");
+  syncOfflineQueue();
+});
+
+window.addEventListener("offline", () => {
+  showSyncToast("Offline mode enabled.", "pending");
 });
