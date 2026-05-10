@@ -1021,6 +1021,7 @@ function filterInventory() {
 
 async function saveInventoryForm(e) {
   e.preventDefault();
+  
 
   const editId = getValue("editId");
   const category = getValue("category");
@@ -1044,17 +1045,8 @@ async function saveInventoryForm(e) {
     officeValue = "N/A";
   }
 
-  let nrValue = "";
-
-  if (editId) {
-    const existingItem = inventoryData.find(item => String(item.id) === String(editId));
-    nrValue = existingItem ? existingItem.nr : "";
-  } else {
-    nrValue = getNextNR();
-  }
-
   const payload = {
-    nr: nrValue,
+    nr: editId ? "" : getNextNR(),
     category,
     description: getValue("description"),
     serial_number: getValue("serial_number"),
@@ -1069,44 +1061,7 @@ async function saveInventoryForm(e) {
     remarks: getValue("remarks")
   };
 
-  try {
-    const url = editId ? `/api/inventory/${editId}` : "/api/inventory";
-    const method = editId ? "PUT" : "POST";
-
-    if (!navigator.onLine && !editId) {
-      addToOfflineInventoryQueue(payload);
-
-      inventoryData.push({
-        ...payload,
-        id: `offline-${Date.now()}`
-      });
-
-      closeModal("inventoryModal");
-
-      const form = $("inventoryForm");
-      if (form) form.reset();
-
-      renderInventoryTable(inventoryData);
-      updatePendingSyncBadge();
-
-      return;
-    }
-
-    const res = await fetch(url, {
-      method,
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
-    });
-
-    const result = await safeJSON(res);
-
-   if (!res.ok) {
-
-  // OFFLINE FALLBACK
-  if (!navigator.onLine && !editId) {
-
+  function saveOfflineAdd() {
     addToOfflineInventoryQueue(payload);
 
     inventoryData.push({
@@ -1117,36 +1072,48 @@ async function saveInventoryForm(e) {
     closeModal("inventoryModal");
 
     const form = $("inventoryForm");
-
     if (form) form.reset();
 
     renderInventoryTable(inventoryData);
-
     updatePendingSyncBadge();
 
-    toastWarning(
-      "Offline Mode: Inventory saved locally."
-    );
+    toastWarning("Offline Mode: Inventory saved locally.");
+  }
 
+  if (!editId && !navigator.onLine) {
+    saveOfflineAdd();
     return;
   }
 
-  toastError(
-    result.error ||
-    result.message ||
-    "Failed to save inventory."
-  );
+  try {
+    const url = editId ? `/api/inventory/${editId}` : "/api/inventory";
+    const method = editId ? "PUT" : "POST";
 
-  return;
-}
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    const result = await safeJSON(res);
+
+    if (!res.ok) {
+      if (!editId) {
+        saveOfflineAdd();
+        return;
+      }
+
+      toastError(result.error || result.message || "Failed to save inventory.");
+      return;
+    }
 
     closeModal("inventoryModal");
 
-    if (editId) {
-      toastSuccess("Inventory item updated successfully.");
-    } else {
-      toastSuccess("New inventory item added successfully.");
-    }
+    toastSuccess(
+      editId
+        ? "Inventory item updated successfully."
+        : "New inventory item added successfully."
+    );
 
     await loadInventory();
 
@@ -1154,28 +1121,13 @@ async function saveInventoryForm(e) {
     console.error("Save failed:", err);
 
     if (!editId) {
-      addToOfflineInventoryQueue(payload);
-
-      inventoryData.push({
-        ...payload,
-        id: `offline-${Date.now()}`
-      });
-
-      closeModal("inventoryModal");
-
-      const form = $("inventoryForm");
-      if (form) form.reset();
-
-      renderInventoryTable(inventoryData);
-      updatePendingSyncBadge();
-
+      saveOfflineAdd();
       return;
     }
 
     toastError("Failed to save inventory.");
   }
 }
-
 async function deleteInventory(id) {
   showConfirmModal({
   title: "Delete Inventory",

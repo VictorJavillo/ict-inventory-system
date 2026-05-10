@@ -1,6 +1,6 @@
-const CACHE_NAME = "ict-inventory-pwa-v1";
+const CACHE_NAME = "ict-inventory-v1";
 
-const APP_SHELL = [
+const urlsToCache = [
   "/",
   "/login.html",
   "/dashboard.html",
@@ -8,53 +8,23 @@ const APP_SHELL = [
   "/borrow.html",
   "/users.html",
   "/logs.html",
-  "/backup.html",
   "/settings.html",
   "/style.css",
-  "/app.js",
-  "/manifest.json",
-  "/images/paf-logo-left.png"
+  "/app.js"
 ];
 
-self.addEventListener("install", event => {
+self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL))
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(urlsToCache);
+    })
   );
-  self.skipWaiting();
 });
 
-self.addEventListener("activate", event => {
-  event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)))
-    )
-  );
-  self.clients.claim();
-});
-
-self.addEventListener("fetch", event => {
-  const req = event.request;
-
-  if (req.method !== "GET") return;
-
-  if (req.url.includes("/api/")) {
-    event.respondWith(
-      fetch(req).catch(() =>
-        new Response(JSON.stringify({ offline: true, message: "Offline mode active" }), {
-          headers: { "Content-Type": "application/json" }
-        })
-      )
-    );
-    return;
-  }
-
+self.addEventListener("fetch", (event) => {
   event.respondWith(
-    caches.match(req).then(cached => {
-      return cached || fetch(req).then(res => {
-        const copy = res.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(req, copy));
-        return res;
-      }).catch(() => caches.match("/dashboard.html"));
+    caches.match(event.request).then((response) => {
+      return response || fetch(event.request);
     })
   );
 });
