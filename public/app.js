@@ -885,7 +885,7 @@ const paginatedData = paginateData(sortedData);
         <td class= data-label="Remarks">
   ${escapeHtml(item.remarks || "")}
 </td>
-       <td data-label="Action" class="action-cell mobile-detail-row">
+<td data-label="Action" class="action-cell mobile-detail-row">
 
   ${getOfflineBadgeHTML(item.id)}
 
@@ -893,6 +893,7 @@ const paginatedData = paginateData(sortedData);
     getOfflineRowClass(item.id) === "offline-delete-row"
       ? `<button type="button" class="btn btn-sm btn-danger" disabled>Delete Queued</button>`
       : `
+        <button
           type="button"
           class="btn btn-sm btn-warning edit-btn desktop-action"
           data-id="${item.id}">
@@ -913,7 +914,6 @@ const paginatedData = paginateData(sortedData);
           Actions
         </button>
       `
-      
   }
 
 </td>
