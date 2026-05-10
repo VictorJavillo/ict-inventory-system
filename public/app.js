@@ -1120,7 +1120,15 @@ async function deleteInventory(id) {
       method: "DELETE"
     });
 
-    toastWarning("Delete queued offline.");
+    showUndoDeleteToast(id);
+
+    renderInventoryTable(
+  currentFilteredInventory.length
+    ? currentFilteredInventory
+    : inventoryData
+);
+
+updatePendingSyncBadge();
     return;
   }
 
@@ -1140,8 +1148,23 @@ async function deleteInventory(id) {
   await loadInventory();
 
 } catch (err) {
-  console.error("Delete failed:", err);
-  toastError("Failed to delete record.");
+  console.error("Delete failed, queued offline:", err);
+
+  addOfflineAction({
+    type: "delete",
+    url: `/api/inventory/${id}`,
+    method: "DELETE"
+  });
+
+  showUndoDeleteToast(id);
+
+  renderInventoryTable(
+    currentFilteredInventory.length
+      ? currentFilteredInventory
+      : inventoryData
+  );
+
+  updatePendingSyncBadge();
 }
 
   }
@@ -2760,6 +2783,113 @@ function showSyncToast(message, type = "info") {
     setTimeout(() => toast.remove(), 300);
   }, 3000);
 }
+function showUndoDeleteToast(id) {
+  const oldToast = document.querySelector(".sync-toast");
+  if (oldToast) oldToast.remove();
+
+  const toast = document.createElement("div");
+  toast.className = "sync-toast pending show";
+
+  toast.innerHTML = `
+    <span>Delete queued offline.</span>
+    <button type="button" class="sync-undo-btn">Undo</button>
+  `;
+
+  document.body.appendChild(toast);
+
+  toast.querySelector(".sync-undo-btn").onclick = () => {
+    let queue = getOfflineQueue();
+
+    queue = queue.filter(item =>
+      !(item.type === "delete" &&
+        item.url &&
+        item.url.includes(`/api/inventory/${id}`))
+    );
+
+    saveOfflineQueue(queue);
+
+    renderInventoryTable(
+      currentFilteredInventory.length
+        ? currentFilteredInventory
+        : inventoryData
+    );
+
+    showSyncToast("Offline delete cancelled.", "success");
+  };
+
+  setTimeout(() => {
+    if (document.body.contains(toast)) {
+      toast.classList.remove("show");
+
+      setTimeout(() => toast.remove(), 300);
+    }
+  }, 5000);
+}
+function showConflictModal(item) {
+
+  const old = document.getElementById("conflictModal");
+
+  if (old) old.remove();
+
+  const modal = document.createElement("div");
+
+  modal.id = "conflictModal";
+
+  modal.className = "conflict-modal";
+
+  modal.innerHTML = `
+    <div class="conflict-box">
+
+      <div class="conflict-title">
+        Sync Conflict Detected
+      </div>
+
+      <div class="conflict-message">
+        Another device or user modified this inventory item while you were offline.
+      </div>
+
+      <div class="conflict-actions">
+
+        <button class="conflict-btn secondary" id="conflictKeepBtn">
+          Keep Pending
+        </button>
+
+        <button class="conflict-btn primary" id="conflictDiscardBtn">
+          Discard Offline Changes
+        </button>
+
+      </div>
+
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  document.getElementById("conflictKeepBtn").onclick = () => {
+    modal.remove();
+    showSyncToast("Offline changes kept pending.", "pending");
+  };
+
+  document.getElementById("conflictDiscardBtn").onclick = () => {
+
+    let queue = getOfflineQueue();
+
+    queue = queue.filter(q => q.id !== item.id);
+
+    saveOfflineQueue(queue);
+
+    modal.remove();
+
+    renderInventoryTable(
+      currentFilteredInventory.length
+        ? currentFilteredInventory
+        : inventoryData
+    );
+
+    showSyncToast("Offline changes discarded.", "success");
+  };
+}
+
 async function syncOfflineQueue() {
   let queue = getOfflineQueue();
 
@@ -2789,11 +2919,15 @@ renderInventoryTable(currentFilteredInventory.length ? currentFilteredInventory 
       const res = await fetch(item.url, options);
 
       if (res.status === 409) {
-        item._syncing = false;
-        remainingQueue.push(item);
-        showSyncToast("Conflict detected. Please review changes.", "conflict");
-        continue;
-      }
+
+  item._syncing = false;
+
+  remainingQueue.push(item);
+
+  showConflictModal(item);
+
+  continue;
+}
 
       if (!res.ok) {
         item._syncing = false;
