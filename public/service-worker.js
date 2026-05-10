@@ -1,6 +1,6 @@
 const CACHE_NAME = "ict-inventory-v1";
 
-const FILES_TO_CACHE = [
+const urlsToCache = [
   "/",
   "/login.html",
   "/dashboard.html",
@@ -8,24 +8,23 @@ const FILES_TO_CACHE = [
   "/borrow.html",
   "/users.html",
   "/logs.html",
-  "/backup.html",
   "/settings.html",
   "/style.css",
-  "/app.js",
-  "/manifest.json",
-  "/images/paf-logo-left.png"
+  "/app.js"
 ];
 
-self.addEventListener("install", event => {
+self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(FILES_TO_CACHE))
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(urlsToCache);
+    })
   );
 });
 
-self.addEventListener("fetch", event => {
+self.addEventListener("fetch", (event) => {
   event.respondWith(
-    caches.match(event.request)
-      .then(response => response || fetch(event.request))
+    caches.match(event.request).then((response) => {
+      return response || fetch(event.request);
+    })
   );
 });

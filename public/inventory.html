@@ -136,6 +136,15 @@
   <option value="table_summary">Print Table + Grand Total</option>
   <option value="grand_only">Print Grand Total Only</option>
 </select>
+
+
+<select id="rowsPerPageSelect" onchange="changeRowsPerPage()">
+  <option value="10">10 rows</option>
+  <option value="25">25 rows</option>
+  <option value="50">50 rows</option>
+  <option value="100">100 rows</option>
+</select>
+
           <button type="button" class="btn btn-gray" onclick="resetFilter()">Reset</button>
         </div>
       </div>
@@ -175,6 +184,36 @@
             </tbody>
          </table>
   </div>
+  <div class="pagination-footer">
+
+  <div id="paginationInfo" class="pagination-info">
+    Showing 0 records
+  </div>
+
+  <div class="pagination-controls">
+
+    <div id="inventoryPagination" class="premium-pagination"></div>
+
+    <div class="page-jump-box">
+      <span>Go to page</span>
+
+      <input
+        type="number"
+        id="pageJumpInput"
+        min="1"
+      />
+
+      <button
+        type="button"
+        class="page-jump-btn"
+        onclick="jumpToPage()">
+        Go
+      </button>
+    </div>
+
+  </div>
+
+</div>
 </div>
 
       <div id="printArea" class="print-area">
@@ -408,7 +447,7 @@
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <script src="/app.js" defer></script>
 <!-- MOBILE BOTTOM NAV -->
 <nav class="mobile-bottom-nav">
   <a href="dashboard.html" class="mobile-nav-item active">
@@ -436,7 +475,46 @@
     <small>Settings</small>
   </a>
 </nav>
+<!-- ========================================
+     PREMIUM CONFIRM MODAL
+======================================== -->
 
+<div id="confirmModal" class="confirm-modal">
+  <div class="confirm-box">
 
+    <div class="confirm-icon">
+      ⚠
+    </div>
+
+    <div class="confirm-title" id="confirmTitle">
+      Confirm Action
+    </div>
+
+    <div class="confirm-message" id="confirmMessage">
+      Are you sure?
+    </div>
+
+    <div class="confirm-actions">
+      <button type="button"
+              class="confirm-cancel"
+              id="confirmCancelBtn">
+        Cancel
+      </button>
+
+      <button type="button"
+              class="confirm-delete"
+              id="confirmOkBtn">
+        Confirm
+      </button>
+    </div>
+
+  </div>
+</div>
+<button
+  type="button"
+  class="mobile-fab-add"
+  onclick="openInventoryModal()">
+  +
+</button>
 </body>
 </html>

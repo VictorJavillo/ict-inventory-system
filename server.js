@@ -378,10 +378,11 @@ async function sessionTimeoutGuard(req, res, next) {
   "/index.html",
   "/manifest.json",
   "/service-worker.js",
+  "/style.css",
+  "/app.js",
   "/api/login",
   "/api/session",
-  "/api/session-check",
-  "/style.css"
+  "/api/session-check"
 ];
 
   if (openPaths.includes(req.path)) {
@@ -419,7 +420,8 @@ function requireAuthPage(req, res, next) {
   "/api/login",
   "/api/session",
   "/api/session-check",
-  "/style.css"
+  "/style.css",
+  "/app.js"
 ];
 
   if (allowed.includes(req.path)) {
@@ -446,7 +448,9 @@ const loginLimiter = rateLimit({
     error: "Too many login requests. Please try again later."
   }
 });
-
+app.use(express.static(path.join(__dirname, "public"), {
+  index: false
+}));
 app.use(sessionTimeoutGuard);
 app.use(requireAuthPage);
 
@@ -490,7 +494,7 @@ app.get("/users.html", sendProtectedPage("users.html", ["admin"]));
 app.get("/logs.html", sendProtectedPage("logs.html", ["admin"]));
 app.get("/backup.html", sendProtectedPage("backup.html", ["admin", "staff"]));
 
-app.use(express.static(path.join(__dirname, "public")));
+
 app.use("/backups", express.static(BACKUP_DIR));
 
 /* =========================
@@ -628,25 +632,13 @@ async function initializeDatabase() {
       const hashedPassword = await bcrypt.hash("admin123", 10);
 
 
-const result = await pool.query(
-  `
-  INSERT INTO users
-  (username, password, role, status, full_name, email, assigned_unit, assigned_office, assigned_site)
-  VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-  RETURNING id, username, role, status, full_name, email, assigned_unit, assigned_office, assigned_site
-  `,
-  [
-    username,
-    hashedPassword,
-    role,
-    status,
-    full_name || null,
-    email || null,
-    role === "admin" ? null : assigned_unit || null,
-    role === "admin" ? null : assigned_office || null,
-    role === "admin" ? null : assigned_site || null
-  ]
+
+await pool.query(
+  `INSERT INTO users (username, password, role, status)
+   VALUES ($1, $2, $3, $4)`,
+  ["admin", hashedPassword, "admin", "active"]
 );
+
 
       console.log("Default user created: admin / admin123");
 
@@ -726,21 +718,7 @@ function requireAdmin(req, res, next) {
 
   next();
 }
-function requireRole(...allowedRoles) {
-  return (req, res, next) => {
-    if (!req.session || !req.session.user) {
-      return res.status(401).json({ error: "Unauthorized. Please login first." });
-    }
 
-    const role = req.session.user.role;
-
-    if (!allowedRoles.includes(role)) {
-      return res.status(403).json({ error: "Forbidden. You do not have permission." });
-    }
-
-    next();
-  };
-}
 
 function requireRole(...allowedRoles) {
   return (req, res, next) => {

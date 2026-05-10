@@ -4,7 +4,7 @@ async function loadCurrentUser() {
   const res = await fetch("/api/me");
 
   if (!res.ok) {
-    window.location.href = "index.html";
+    window.location.href = "/login.html";
     return null;
   }
 
@@ -96,6 +96,9 @@ function applyStaffFilterLock() {
 }
 let filteredData = [];
 let inventoryData = [];
+let currentPage = 1;
+let rowsPerPage = 10;
+let currentFilteredInventory = [];
 let statusChart;
 let licenseChart;
 let categoryChart;
@@ -325,15 +328,27 @@ async function checkSession() {
 }
 
 async function logout() {
-  try {
-    await fetch("/api/logout", { method: "POST" });
-  } catch (err) {
-    console.error("Logout failed:", err);
-  }
+  showConfirmModal({
+    title: "Logout Account",
+    message: "Are you sure you want to logout from the system?",
+    confirmText: "Logout",
 
-  window.location.href = "/login.html";
+    onConfirm: async () => {
+      try {
+        await fetch("/api/logout", { method: "POST" });
+        toastInfo("Logging out...");
+      } catch (err) {
+        console.error("Logout failed:", err);
+        toastError("Logout failed.");
+        return;
+      }
+
+      setTimeout(() => {
+        window.location.href = "/login.html";
+      }, 600);
+    }
+  });
 }
-
 /* =========================
    MODAL
 ========================= */
@@ -475,6 +490,157 @@ function openInventoryModal(item = null) {
   openModal("inventoryModal");
 }
 
+/* =========================
+   PREMIUM PAGINATION
+========================= */
+
+function paginateData(data) {
+  const start = (currentPage - 1) * rowsPerPage;
+  const end = start + rowsPerPage;
+
+  return data.slice(start, end);
+}
+
+function renderPagination(data) {
+
+  const paginationBox =
+    document.getElementById("inventoryPagination");
+
+  if (!paginationBox) return;
+
+  const totalPages =
+    Math.ceil(data.length / rowsPerPage);
+
+  if (totalPages <= 1) {
+    paginationBox.innerHTML = "";
+    return;
+  }
+
+  let html = `
+    <button
+      class="page-btn"
+      ${currentPage === 1 ? "disabled" : ""}
+      onclick="changePage(${currentPage - 1})">
+      ‹ Prev
+    </button>
+  `;
+
+  for (let i = 1; i <= totalPages; i++) {
+
+    if (
+      i === 1 ||
+      i === totalPages ||
+      Math.abs(i - currentPage) <= 1
+    ) {
+
+      html += `
+        <button
+          class="page-btn ${i === currentPage ? "active" : ""}"
+          onclick="changePage(${i})">
+          ${i}
+        </button>
+      `;
+
+    } else if (
+      i === currentPage - 2 ||
+      i === currentPage + 2
+    ) {
+
+      html += `<span class="page-dots">...</span>`;
+    }
+  }
+
+  html += `
+    <button
+      class="page-btn"
+      ${currentPage === totalPages ? "disabled" : ""}
+      onclick="changePage(${currentPage + 1})">
+      Next ›
+    </button>
+  `;
+
+  paginationBox.innerHTML = html;
+
+const info = document.getElementById("paginationInfo");
+
+if (info) {
+
+  const start =
+    data.length === 0
+      ? 0
+      : ((currentPage - 1) * rowsPerPage) + 1;
+
+  const end =
+    Math.min(currentPage * rowsPerPage, data.length);
+
+  info.innerHTML = `
+    Showing
+    <strong>${start}-${end}</strong>
+    of
+    <strong>${data.length}</strong>
+    records
+  `;
+}
+
+
+
+}
+
+function changePage(page) {
+
+  currentPage = page;
+
+  const activeData =
+    filteredData.length > 0
+      ? filteredData
+      : inventoryData;
+
+  renderInventoryTable(activeData);
+
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth"
+  });
+}
+function changeRowsPerPage() {
+  const select = document.getElementById("rowsPerPageSelect");
+  if (!select) return;
+
+  rowsPerPage = Number(select.value) || 10;
+  currentPage = 1;
+
+  const activeData =
+    filteredData.length > 0
+      ? filteredData
+      : inventoryData;
+
+  renderInventoryTable(activeData);
+}
+
+function jumpToPage() {
+  const input = document.getElementById("pageJumpInput");
+  if (!input) return;
+
+  const activeData =
+    currentFilteredInventory.length > 0
+      ? currentFilteredInventory
+      : inventoryData;
+
+  const totalPages = Math.ceil(activeData.length / rowsPerPage);
+
+  let page = Number(input.value);
+
+  if (!page || page < 1) page = 1;
+  if (page > totalPages) page = totalPages;
+
+  currentPage = page;
+
+  renderInventoryTable(activeData);
+
+  input.value = "";
+}
+
+
 async function loadInventory() {
   try {
     const res = await fetch("/api/inventory");
@@ -501,42 +667,94 @@ function renderInventoryTable(data) {
   if (!tbody) return;
 
   const sortedData = sortInventoryAscending(data);
+  currentFilteredInventory = sortedData;
+
+const paginatedData = paginateData(sortedData);
 
   if (!sortedData.length) {
     tbody.innerHTML = `<tr><td colspan="15" class="empty-state">No equipment records found.</td></tr>`;
     return;
   }
 
-  tbody.innerHTML = sortedData.map((item, index) => {
+  tbody.innerHTML = paginatedData.map((item, index) => {
     const parsed = parseUnitDisplay(item.unit || "");
 
     return `
       <tr>
-        <td>${index + 1}</td>
-        <td>${escapeHtml(item.category || "")}</td>
-        <td>${escapeHtml(item.description || "")}</td>
-        <td>${escapeHtml(item.serial_number || "")}</td>
-        <td>${escapeHtml(item.property_number || "")}</td>
-        <td>${badgeStatus(item.status || "")}</td>
+        <td>${(currentPage - 1) * rowsPerPage + index + 1}</td>
+
+
+       <td class= data-label="Category">
+  ${escapeHtml(item.category || "")}
+</td>
+        <td class= data-label="Description">
+  ${escapeHtml(item.description || "")}
+</td>
+        <td class=data-label="Serial Number">
+  ${escapeHtml(item.serial_number || "")}
+</td>
+        <td  class=data-label="Property Number">
+  ${escapeHtml(item.property_number || "")}
+</td>
+       <td data-label="Status">
+  ${badgeStatus(item.status || "")}
+</td>
         <td>
-          <span class="date-badge ${getDateClass(item.date_issued)}">
-            ${escapeHtml(formatMonthYearDisplay(item.date_issued))}
-          </span>
+          <td class= data-label="Date Issued">
+  <span class="date-badge ${getDateClass(item.date_issued)}">
+    ${escapeHtml(formatMonthYearDisplay(item.date_issued))}
+  </span>
+</td>
         </td>
-        <td>${escapeHtml(parsed.unit || item.unit || "")}</td>
-        <td>${escapeHtml(parsed.office || "N/A")}</td>
-        <td>${escapeHtml(item.os || "N/A")}</td>
-        <td>${escapeHtml(item.windows_type || "N/A")}</td>
-        <td>${escapeHtml(item.ms_office || "N/A")}</td>
-        <td>${escapeHtml(item.antivirus || "N/A")}</td>
-        <td>${escapeHtml(item.remarks || "")}</td>
-        <td class="action-cell">
-          <button type="button" class="btn btn-sm btn-warning edit-btn" data-id="${item.id}">Edit</button>
-          <button type="button" class="btn btn-sm btn-danger delete-btn" data-id="${item.id}">Delete</button>
-        </td>
+        <td class= data-label="Unit">
+  ${escapeHtml(parsed.unit || item.unit || "")}
+</td>
+        <td class= data-label="Office">
+  ${escapeHtml(parsed.office || "N/A")}
+</td>
+        <td class=" data-label="OS">
+  ${escapeHtml(item.os || "N/A")}
+</td>
+        <td class=" data-label="Windows Type">
+  ${escapeHtml(item.windows_type || "N/A")}
+</td>
+        <td class= data-label="MS Office">
+  ${escapeHtml(item.ms_office || "N/A")}
+</td>
+        <td class= data-label="Antivirus">
+  ${escapeHtml(item.antivirus || "N/A")}
+</td>
+        <td class= data-label="Remarks">
+  ${escapeHtml(item.remarks || "")}
+</td>
+        <td data-label="Action" class="action-cell mobile-detail-row">
+
+  <button
+    type="button"
+    class="btn btn-sm btn-warning edit-btn desktop-action"
+    data-id="${item.id}">
+    Edit
+  </button>
+
+  <button
+    type="button"
+    class="btn btn-sm btn-danger delete-btn desktop-action"
+    data-id="${item.id}">
+    Delete
+  </button>
+
+  <button
+    type="button"
+    class="btn btn-sm btn-primary mobile-action-btn"
+    data-id="${item.id}">
+    Actions
+  </button>
+
+</td>
       </tr>
     `;
   }).join("");
+  renderPagination(sortedData);
 }
 
 function filterInventory() {
@@ -638,34 +856,78 @@ async function saveInventoryForm(e) {
     const result = await safeJSON(res);
 
     if (!res.ok) {
-      alert(result.error || result.message || "Failed to save inventory.");
+      toastError(result.error || result.message || "Failed to save inventory.");
       return;
     }
 
     closeModal("inventoryModal");
-    await loadInventory();
-  } catch (err) {
-    console.error("Save failed:", err);
-    alert("Failed to save inventory.");
-  }
-}
 
-async function deleteInventory(id) {
-  if (!confirm("Delete this record?")) return;
-
-  try {
-    const res = await fetch(`/api/inventory/${id}`, { method: "DELETE" });
-    const result = await safeJSON(res);
-
-    if (!res.ok) {
-      alert(result.error || "Failed to delete record.");
-      return;
+    if (editId) {
+      toastSuccess("Inventory item updated successfully.");
+    } else {
+      toastSuccess("New inventory item added successfully.");
     }
 
     await loadInventory();
   } catch (err) {
+    console.error("Save failed:", err);
+    toastError("Failed to save inventory.");
+  }
+}
+
+async function deleteInventory(id) {
+  showConfirmModal({
+  title: "Delete Inventory",
+  message: "Are you sure you want to delete this inventory record?",
+  confirmText: "Delete",
+
+  onConfirm: async () => {
+
+    try {
+
+      const res = await fetch(`/api/inventory/${id}`, {
+        method: "DELETE"
+      });
+
+      const result = await safeJSON(res);
+
+      if (!res.ok) {
+        toastError(result.error || "Failed to delete record.");
+        return;
+      }
+
+      toastWarning("Inventory item deleted.");
+
+      await loadInventory();
+
+    } catch (err) {
+      console.error("Delete failed:", err);
+      toastError("Failed to delete record.");
+    }
+
+  }
+});
+
+return;
+
+  try {
+    const res = await fetch(`/api/inventory/${id}`, {
+      method: "DELETE"
+    });
+
+    const result = await safeJSON(res);
+
+    if (!res.ok) {
+      toastError(result.error || "Failed to delete record.");
+      return;
+    }
+
+    toastWarning("Inventory item deleted.");
+
+    await loadInventory();
+  } catch (err) {
     console.error("Delete failed:", err);
-    alert("Failed to delete record.");
+    toastError("Failed to delete record.");
   }
 }
 
@@ -732,37 +994,52 @@ async function saveBorrowForm(e) {
     const result = await safeJSON(res);
 
     if (!res.ok) {
-      alert(result.error || "Failed to save borrow record.");
+      toastError(result.error || "Failed to save borrow record.");
       return;
     }
 
     const form = $("borrowForm");
     if (form) form.reset();
 
+    toastSuccess("Borrow record saved successfully.");
+
     await loadBorrows();
+
   } catch (err) {
     console.error("Borrow save failed:", err);
-    alert("Failed to save borrow record.");
+    toastError("Failed to save borrow record.");
   }
 }
 
 async function deleteBorrow(id) {
-  if (!confirm("Delete this borrow record?")) return;
+  showConfirmModal({
+    title: "Delete Borrow Record",
+    message: "Are you sure you want to delete this borrow record?",
+    confirmText: "Delete",
 
-  try {
-    const res = await fetch(`/api/borrows/${id}`, { method: "DELETE" });
-    const result = await safeJSON(res);
+    onConfirm: async () => {
+      try {
+        const res = await fetch(`/api/borrows/${id}`, {
+          method: "DELETE"
+        });
 
-    if (!res.ok) {
-      alert(result.error || "Failed to delete borrow record.");
-      return;
+        const result = await safeJSON(res);
+
+        if (!res.ok) {
+          toastError(result.error || "Failed to delete borrow record.");
+          return;
+        }
+
+        toastWarning("Borrow record deleted.");
+
+        await loadBorrows();
+
+      } catch (err) {
+        console.error("Borrow delete failed:", err);
+        toastError("Failed to delete borrow record.");
+      }
     }
-
-    await loadBorrows();
-  } catch (err) {
-    console.error("Borrow delete failed:", err);
-    alert("Failed to delete borrow record.");
-  }
+  });
 }
 
 /* =========================
@@ -1652,8 +1929,17 @@ function applyInventoryFilters() {
 
   const hasActiveFilter = Boolean(category || unit || search);
 
-  filteredData = hasActiveFilter ? sortInventoryAscending(result) : [];
-  renderInventoryTable(hasActiveFilter ? filteredData : inventoryData);
+  filteredData = hasActiveFilter
+  ? sortInventoryAscending(result)
+  : [];
+
+currentPage = 1;
+
+renderInventoryTable(
+  hasActiveFilter
+    ? filteredData
+    : inventoryData
+);
 }
 
 function filterInventory() {
@@ -1671,14 +1957,26 @@ function resetFilter() {
   if ($("searchColumn")) $("searchColumn").value = "all";
 
   filteredData = [];
-  renderInventoryTable(inventoryData);
+
+currentPage = 1;
+
+renderInventoryTable(inventoryData);
 }
 
 /* =========================
    EVENTS
 ========================= */
 document.addEventListener("click", function (e) {
+
+  const actionBtn = e.target.closest(".mobile-action-btn");
+
+  if (actionBtn) {
+    openActionSheet(actionBtn.getAttribute("data-id"));
+    return;
+  }
+
   const editBtn = e.target.closest(".edit-btn");
+
   if (editBtn) {
     const id = editBtn.getAttribute("data-id");
     const item = inventoryData.find(i => String(i.id) === String(id));
@@ -1693,6 +1991,7 @@ document.addEventListener("click", function (e) {
   }
 
   const deleteBtn = e.target.closest(".delete-btn");
+
   if (deleteBtn) {
     const id = deleteBtn.getAttribute("data-id");
     deleteInventory(id);
@@ -1771,4 +2070,300 @@ document.addEventListener("DOMContentLoaded", () => {
 
     });
 
+});
+/* =========================
+   MOBILE INVENTORY EXPAND
+========================= */
+
+document.addEventListener("click", function (e) {
+  const row = e.target.closest(".inventory-table tbody tr");
+
+  if (!row) return;
+  if (e.target.closest("button")) return;
+
+  if (window.innerWidth <= 768) {
+    row.classList.toggle("mobile-expanded");
+  }
+});
+/* =========================
+   MOBILE SEARCHABLE DROPDOWNS
+========================= */
+
+function initMobileSearchableDropdowns() {
+  if (window.innerWidth > 768) return;
+
+  const selects = document.querySelectorAll(
+    ".filter-container select, #category, #unit, #status, #os, #windows_type, #ms_office, #antivirus"
+  );
+
+  selects.forEach(select => {
+    if (select.dataset.customReady) return;
+
+    select.dataset.customReady = "true";
+    select.classList.add("mobile-native-hidden");
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "mobile-custom-select";
+
+    const trigger = document.createElement("button");
+    trigger.type = "button";
+    trigger.className = "mobile-select-trigger";
+
+    const menu = document.createElement("div");
+    menu.className = "mobile-select-menu";
+
+    const search = document.createElement("input");
+    search.type = "text";
+    search.className = "mobile-select-search";
+    search.placeholder = "Search option...";
+
+    const optionsBox = document.createElement("div");
+    optionsBox.className = "mobile-select-options";
+
+    function updateTrigger() {
+      const selected = select.options[select.selectedIndex];
+      trigger.textContent = selected ? selected.textContent : "Select";
+    }
+
+    function renderOptions(keyword = "") {
+      const searchText = keyword.toLowerCase();
+
+      optionsBox.innerHTML = Array.from(select.options)
+        .filter(option =>
+          option.textContent.toLowerCase().includes(searchText)
+        )
+        .map(option => `
+          <div class="mobile-select-option ${option.value === select.value ? "active" : ""}"
+               data-value="${option.value}">
+            ${option.textContent}
+          </div>
+        `).join("");
+    }
+
+    trigger.addEventListener("click", () => {
+      document.querySelectorAll(".mobile-custom-select.open")
+        .forEach(el => {
+          if (el !== wrapper) el.classList.remove("open");
+        });
+
+      wrapper.classList.toggle("open");
+      search.value = "";
+      renderOptions();
+      setTimeout(() => search.focus(), 100);
+    });
+
+    search.addEventListener("input", () => {
+      renderOptions(search.value);
+    });
+
+    optionsBox.addEventListener("click", e => {
+      const option = e.target.closest(".mobile-select-option");
+      if (!option) return;
+
+      select.value = option.dataset.value;
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+
+      updateTrigger();
+      renderOptions();
+      wrapper.classList.remove("open");
+    });
+
+    document.addEventListener("click", e => {
+      if (!wrapper.contains(e.target)) {
+        wrapper.classList.remove("open");
+      }
+    });
+
+    menu.appendChild(search);
+    menu.appendChild(optionsBox);
+    wrapper.appendChild(trigger);
+    wrapper.appendChild(menu);
+
+    select.parentNode.insertBefore(wrapper, select.nextSibling);
+
+    updateTrigger();
+    renderOptions();
+  });
+}
+
+document.addEventListener("DOMContentLoaded", initMobileSearchableDropdowns);
+
+/* ========================================
+   PREMIUM APP TOAST SYSTEM
+======================================== */
+
+function initToastContainer() {
+  let container = document.querySelector(".toast-container");
+
+  if (!container) {
+    container = document.createElement("div");
+    container.className = "toast-container";
+    document.body.appendChild(container);
+  }
+
+  return container;
+}
+
+function showToast(type = "info", title = "Notice", message = "", duration = 3200) {
+  const container = initToastContainer();
+
+  const icons = {
+    success: "✓",
+    error: "!",
+    warning: "⚠",
+    info: "i"
+  };
+
+  const toast = document.createElement("div");
+  toast.className = `toast ${type}`;
+
+  toast.innerHTML = `
+    <div class="toast-icon">${icons[type] || icons.info}</div>
+    <div class="toast-content">
+      <div class="toast-title">${title}</div>
+      <div class="toast-message">${message}</div>
+    </div>
+    <button class="toast-close" type="button">×</button>
+  `;
+
+  container.appendChild(toast);
+
+  const closeToast = () => {
+    toast.classList.add("hide");
+    setTimeout(() => toast.remove(), 280);
+  };
+
+  toast.querySelector(".toast-close").addEventListener("click", closeToast);
+
+  setTimeout(closeToast, duration);
+}
+
+/* Shortcut functions */
+function toastSuccess(message, title = "Success") {
+  showToast("success", title, message);
+}
+
+function toastError(message, title = "Error") {
+  showToast("error", title, message);
+}
+
+function toastWarning(message, title = "Warning") {
+  showToast("warning", title, message);
+}
+
+function toastInfo(message, title = "Info") {
+  showToast("info", title, message);
+}
+/* ========================================
+   PREMIUM CONFIRM MODAL
+======================================== */
+
+function showConfirmModal({
+  title = "Confirm Action",
+  message = "Are you sure?",
+  confirmText = "Confirm",
+  onConfirm = null
+}) {
+
+  const modal = $("confirmModal");
+  const titleEl = $("confirmTitle");
+  const messageEl = $("confirmMessage");
+  const okBtn = $("confirmOkBtn");
+  const cancelBtn = $("confirmCancelBtn");
+
+  if (!modal) return;
+
+  titleEl.textContent = title;
+  messageEl.textContent = message;
+  okBtn.textContent = confirmText;
+
+  modal.classList.add("show");
+
+  function closeModal() {
+    modal.classList.remove("show");
+  }
+
+  cancelBtn.onclick = () => {
+    closeModal();
+  };
+
+  okBtn.onclick = async () => {
+
+    closeModal();
+
+    if (typeof onConfirm === "function") {
+      await onConfirm();
+    }
+
+  };
+
+}
+/* ========================================
+   PREMIUM MOBILE ACTION SHEET
+======================================== */
+
+function initActionSheet() {
+  if ($("actionSheetBackdrop")) return;
+
+  const backdrop = document.createElement("div");
+  backdrop.id = "actionSheetBackdrop";
+  backdrop.className = "action-sheet-backdrop";
+
+  const sheet = document.createElement("div");
+  sheet.id = "actionSheet";
+  sheet.className = "action-sheet";
+
+  sheet.innerHTML = `
+    <div class="action-sheet-title">Manage Record</div>
+
+    <button type="button" class="action-sheet-btn action-sheet-edit" id="sheetEditBtn">
+      Edit Record
+    </button>
+
+    <button type="button" class="action-sheet-btn action-sheet-delete" id="sheetDeleteBtn">
+      Delete Record
+    </button>
+
+    <button type="button" class="action-sheet-btn action-sheet-cancel" id="sheetCancelBtn">
+      Cancel
+    </button>
+  `;
+
+  document.body.appendChild(backdrop);
+  document.body.appendChild(sheet);
+
+  backdrop.addEventListener("click", closeActionSheet);
+  $("sheetCancelBtn").addEventListener("click", closeActionSheet);
+}
+
+function openActionSheet(id) {
+  initActionSheet();
+
+  const item = inventoryData.find(i => String(i.id) === String(id));
+
+  $("sheetEditBtn").onclick = () => {
+    closeActionSheet();
+    if (item) openInventoryModal(item);
+  };
+
+  $("sheetDeleteBtn").onclick = () => {
+    closeActionSheet();
+    deleteInventory(id);
+  };
+
+  $("actionSheetBackdrop").classList.add("show");
+  $("actionSheet").classList.add("show");
+}
+
+function closeActionSheet() {
+  const backdrop = $("actionSheetBackdrop");
+  const sheet = $("actionSheet");
+
+  if (backdrop) backdrop.classList.remove("show");
+  if (sheet) sheet.classList.remove("show");
+}
+document.addEventListener("keydown", function (e) {
+  if (e.target.id === "pageJumpInput" && e.key === "Enter") {
+    jumpToPage();
+  }
 });

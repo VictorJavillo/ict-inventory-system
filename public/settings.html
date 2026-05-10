@@ -72,5 +72,34 @@
     document.getElementById('accountForm').addEventListener('submit', saveAccount); document.getElementById('passwordForm').addEventListener('submit', changePassword); document.getElementById('adminSettingsForm').addEventListener('submit', saveAdminSettings); document.getElementById('reloadAccountBtn').addEventListener('click', loadCurrentUser);
     (async function init() { await loadCurrentUser(); await loadAdminSettings(); })();
   </script>
+<!-- MOBILE BOTTOM NAV -->
+<nav class="mobile-bottom-nav">
+  <a href="dashboard.html" class="mobile-nav-item active">
+    <span>🏠</span>
+    <small>Dashboard</small>
+  </a>
+
+  <a href="inventory.html" class="mobile-nav-item">
+    <span>📦</span>
+    <small>Inventory</small>
+  </a>
+
+  <a href="borrow.html" class="mobile-nav-item">
+    <span>🔄</span>
+    <small>Borrow</small>
+  </a>
+
+  <a href="#" class="mobile-nav-item" onclick="window.print()">
+    <span>🖨</span>
+    <small>Print</small>
+  </a>
+
+  <a href="settings.html" class="mobile-nav-item">
+    <span>⚙</span>
+    <small>Settings</small>
+  </a>
+</nav>
+
+
 </body>
 </html>
