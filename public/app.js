@@ -156,18 +156,44 @@ window.addEventListener(
 );
 
 async function loadCurrentUser() {
-  const res = await fetch("/api/me");
+  try {
+    const res = await fetch("/api/me");
 
-  if (!res.ok) {
-    window.location.href = "/login.html";
+    if (!res.ok) {
+      const cachedUser = JSON.parse(localStorage.getItem("currentUserCache") || "null");
+
+      if (cachedUser) {
+        CURRENT_USER = cachedUser;
+        applyRoleUI(CURRENT_USER.role);
+        return CURRENT_USER;
+      }
+
+      window.location.href = "/login.html";
+      return null;
+    }
+
+    const data = await res.json();
+    CURRENT_USER = data.user || data;
+
+    localStorage.setItem("currentUserCache", JSON.stringify(CURRENT_USER));
+
+    applyRoleUI(CURRENT_USER.role);
+    return CURRENT_USER;
+
+  } catch (err) {
+    console.warn("Offline user fallback:", err);
+
+    const cachedUser = JSON.parse(localStorage.getItem("currentUserCache") || "null");
+
+    if (cachedUser) {
+      CURRENT_USER = cachedUser;
+      applyRoleUI(CURRENT_USER.role);
+      return CURRENT_USER;
+    }
+
+    toastWarning("Offline Mode: Please open the app online first before using offline mode.");
     return null;
   }
-
- const data = await res.json();
-CURRENT_USER = data.user || data;
-
-applyRoleUI(CURRENT_USER.role);
-return CURRENT_USER;
 }
 
 function applyRoleUI(role) {
@@ -2242,8 +2268,11 @@ document.addEventListener("click", function (e) {
 
 document.addEventListener("DOMContentLoaded", async () => {
 
-  await loadCurrentUser(); // ✅ ADD MO ITO SA UNANG LINE
+  await loadCurrentUser();
+
+if (navigator.onLine) {
   await checkSession();
+}
   applyStaffFilterLock();
   const inventoryForm = $("inventoryForm");
   if (inventoryForm && !inventoryForm.dataset.bound) {
