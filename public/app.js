@@ -19,7 +19,6 @@ function saveOfflineQueue(queue) {
 }
 
 function addOfflineAction(action) {
-console.log("QUEUE LENGTH:", queue.length);
   const queue = getOfflineQueue();
 
   const newAction = {
@@ -33,12 +32,7 @@ console.log("QUEUE LENGTH:", queue.length);
 
   queue.push(newAction);
 
-  localStorage.setItem(
-    OFFLINE_QUEUE_KEY,
-    JSON.stringify(queue)
-  );
-
-  updatePendingSyncBadge();
+  saveOfflineQueue(queue);
 
   showSyncToast(
     `${queue.length} pending change(s).`,
@@ -2237,7 +2231,7 @@ if ($("inventoryTableBody")) {
   applyInventoryFilters();
   loadSignatories();
 
-  syncOfflineInventoryQueue();
+syncOfflineQueue();
 }
 
   if ($("borrowTableBody")) {
@@ -2716,7 +2710,7 @@ function updatePendingSyncBadge() {
 
     badge.classList.add("hidden");
 
-    text.textContent = "Synced";
+    text.textContent = "";
 
   }
 }
