@@ -914,7 +914,48 @@ function filterInventory() {
   filteredData = sortInventoryAscending(filtered);
   renderInventoryTable(filteredData);
 }
+function queueOfflineInventorySave(editId, payload) {
+  addOfflineAction({
+    type: editId ? "edit" : "add",
+    url: editId ? `/api/inventory/${editId}` : "/api/inventory",
+    method: editId ? "PUT" : "POST",
+    body: payload
+  });
 
+  if (!editId) {
+    inventoryData.push({
+      ...payload,
+      id: `offline-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      _offline: true
+    });
+  } else {
+    inventoryData = inventoryData.map(item =>
+      String(item.id) === String(editId)
+        ? { ...item, ...payload, _offline: true }
+        : item
+    );
+  }
+
+  localStorage.setItem("offlineInventoryCache", JSON.stringify(inventoryData));
+
+  closeModal("inventoryModal");
+
+  const form = $("inventoryForm");
+  if (form) form.reset();
+
+  setValue("editId", "");
+  setValue("date_issued", "");
+  setValue("office", "N/A");
+
+  handleCategoryChange();
+  handleUnitOfficeLogic();
+
+  currentPage = 1;
+  renderInventoryTable(inventoryData);
+  updatePendingSyncBadge();
+
+  toastWarning(editId ? "Edit queued offline." : "Inventory queued offline.");
+}
 async function saveInventoryForm(e) {
   e.preventDefault();
   
@@ -956,55 +997,16 @@ async function saveInventoryForm(e) {
     antivirus,
     remarks: getValue("remarks")
   };
-
 try {
 
   if (!navigator.onLine) {
-
-    addOfflineAction({
-      type: editId ? "edit" : "add",
-      url: editId
-        ? `/api/inventory/${editId}`
-        : "/api/inventory",
-      method: editId ? "PUT" : "POST",
-      body: payload
-    });
-
-    if (!editId) {
-      inventoryData.push({
-        ...payload,
-        id: `offline-${Date.now()}`
-      });
-    } else {
-      inventoryData = inventoryData.map(item =>
-        String(item.id) === String(editId)
-          ? { ...item, ...payload }
-          : item
-      );
-    }
-
-    localStorage.setItem(
-      "offlineInventoryCache",
-      JSON.stringify(inventoryData)
-    );
-
-    closeModal("inventoryModal");
-
-    const form = $("inventoryForm");
-    if (form) form.reset();
-
-    renderInventoryTable(inventoryData);
-
-    updatePendingSyncBadge();
-
-    toastWarning(
-      editId
-        ? "Edit queued offline."
-        : "Inventory queued offline."
-    );
-
+    queueOfflineInventorySave(editId, payload);
     return;
   }
+
+  const url = editId
+    ? `/api/inventory/${editId}`
+    : "/api/inventory";
 
   const url = editId
     ? `/api/inventory/${editId}`
@@ -1057,22 +1059,7 @@ try {
 
   } catch (err) {
   console.error("Save failed:", err);
-
-  addOfflineAction({
-    type: editId ? "edit" : "add",
-    url: editId
-      ? `/api/inventory/${editId}`
-      : "/api/inventory",
-    method: editId ? "PUT" : "POST",
-    body: payload
-  });
-
-  toastWarning(
-    editId
-      ? "Edit queued offline."
-      : "Inventory queued offline."
-  );
-
+  queueOfflineInventorySave(editId, payload);
   return;
 }
 }
