@@ -6962,3 +6962,14 @@ body[data-role="viewer"] .edit-btn {
     padding: 7px 11px;
   }
 }
+.pending-sync-badge.syncing {
+  background: rgba(59, 130, 246, 0.16);
+  color: #93c5fd;
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+.pending-sync-badge.synced {
+  background: rgba(34, 197, 94, 0.16);
+  color: #86efac;
+  border-color: rgba(34, 197, 94, 0.4);
+}

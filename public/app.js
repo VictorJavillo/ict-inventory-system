@@ -45,29 +45,41 @@ function addToOfflineInventoryQueue(item) {
   );
 }
 
-function updatePendingSyncBadge() {
+function updatePendingSyncBadge(status = "pending") {
 
-  const badge =
-    document.getElementById(
-      "pendingSyncBadge"
-    );
-
-  const count =
-    document.getElementById(
-      "pendingSyncCount"
-    );
+  const badge = document.getElementById("pendingSyncBadge");
+  const count = document.getElementById("pendingSyncCount");
 
   if (!badge || !count) return;
 
-  const pending =
-    getOfflineInventoryQueue().length;
+  const pending = getOfflineInventoryQueue().length;
 
-  count.textContent = pending;
+  badge.classList.remove("hidden", "syncing", "synced");
+
+  if (status === "syncing") {
+    badge.classList.add("syncing");
+    badge.innerHTML = `🔄 Syncing...`;
+    return;
+  }
+
+  if (status === "synced") {
+    badge.classList.add("synced");
+    badge.innerHTML = `✅ Synced`;
+    
+    setTimeout(() => {
+      badge.classList.add("hidden");
+      badge.innerHTML = `⏳ Pending Sync: <span id="pendingSyncCount">0</span>`;
+    }, 3000);
+
+    return;
+  }
 
   if (pending > 0) {
+    badge.innerHTML = `⏳ Pending Sync: <span id="pendingSyncCount">${pending}</span>`;
     badge.classList.remove("hidden");
   } else {
     badge.classList.add("hidden");
+    badge.innerHTML = `⏳ Pending Sync: <span id="pendingSyncCount">0</span>`;
   }
 }
 
@@ -86,6 +98,7 @@ async function syncOfflineInventoryQueue() {
   toastInfo(
     `Syncing ${queue.length} pending item(s)...`
   );
+  updatePendingSyncBadge("syncing");
 
   const remaining = [];
 
@@ -119,13 +132,15 @@ async function syncOfflineInventoryQueue() {
 
   if (remaining.length === 0) {
 
-    toastSuccess(
-      "Offline inventory synced successfully."
-    );
+  updatePendingSyncBadge("synced");
 
-    loadInventory();
+  toastSuccess(
+    "Pending inventory synced to database successfully."
+  );
 
-  } else {
+  loadInventory();
+
+} else {
 
     toastWarning(
       `${remaining.length} item(s) still pending sync.`
