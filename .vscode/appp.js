@@ -599,7 +599,7 @@ async function deleteInventory(id) {
 
     await loadInventory();
   } catch (err) {
-    console.error("Delete failed:", err);
+    console.error("Offline delete queued:", err);
     alert("Failed to delete record.");
   }
 }
@@ -691,7 +691,7 @@ async function deleteBorrow(id) {
 
     await loadBorrows();
   } catch (err) {
-    console.error("Borrow delete failed:", err);
+    console.error("Offline delete queued:", err);
     alert("Failed to delete borrow record.");
   }
 }

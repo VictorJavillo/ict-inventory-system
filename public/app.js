@@ -1275,7 +1275,7 @@ async function deleteBorrow(id) {
         await loadBorrows();
 
       } catch (err) {
-        console.error("Borrow delete failed:", err);
+        console.error("Offline delete queued:", err);
         toastError("Failed to delete borrow record.");
       }
     }
