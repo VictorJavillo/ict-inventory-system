@@ -6591,3 +6591,342 @@ body[data-role="viewer"] .edit-btn {
     display: none !important;
   }
 }
+/* ========================================
+   FULL OFFLINE PWA APP EXPERIENCE
+   Safe layer only - does not affect cards/table/pagination
+======================================== */
+
+#pwaSplash {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background:
+    radial-gradient(circle at top, rgba(37, 99, 235, .22), transparent 35%),
+    linear-gradient(135deg, #07111f, #0b1730 55%, #020617);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: .45s ease;
+}
+
+#pwaSplash.hide {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pwa-splash-logo {
+  width: 86px;
+  height: 86px;
+  border-radius: 26px;
+  background: linear-gradient(135deg, #2563eb, #38bdf8);
+  display: grid;
+  place-items: center;
+  color: white;
+  font-weight: 900;
+  font-size: 28px;
+  box-shadow: 0 24px 70px rgba(37, 99, 235, .45);
+}
+
+.pwa-splash-title {
+  margin-top: 18px;
+  color: #e5f0ff;
+  font-weight: 900;
+  font-size: 20px;
+}
+
+.pwa-splash-sub {
+  margin-top: 6px;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+#pwaInstallBox {
+  position: fixed;
+  left: 14px;
+  right: 14px;
+  bottom: 88px;
+  z-index: 9999;
+  display: none;
+}
+
+#pwaInstallBox.show {
+  display: block;
+}
+
+.pwa-install-card {
+  max-width: 430px;
+  margin: auto;
+  display: grid;
+  grid-template-columns: 42px 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 14px;
+  border-radius: 22px;
+  background: rgba(15, 23, 42, .92);
+  border: 1px solid rgba(148, 163, 184, .22);
+  box-shadow: 0 20px 60px rgba(0,0,0,.35);
+  backdrop-filter: blur(18px);
+  color: #e5e7eb;
+}
+
+.pwa-install-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 15px;
+  display: grid;
+  place-items: center;
+  background: rgba(37, 99, 235, .18);
+}
+
+.pwa-install-card strong {
+  font-size: 14px;
+}
+
+.pwa-install-card p {
+  margin: 2px 0 0;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+#pwaInstallBtn {
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 13px;
+  background: linear-gradient(135deg, #2563eb, #38bdf8);
+  color: white;
+  font-weight: 800;
+}
+
+#pwaCloseBtn {
+  border: 0;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 22px;
+}
+
+#offlineBanner {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-80px);
+  z-index: 9999;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, .96);
+  color: #111827;
+  font-size: 12px;
+  font-weight: 900;
+  box-shadow: 0 16px 45px rgba(0,0,0,.28);
+  transition: .35s ease;
+}
+
+#offlineBanner.show {
+  transform: translateX(-50%) translateY(0);
+}
+
+.pwa-update-toast {
+  position: fixed;
+  left: 14px;
+  right: 14px;
+  bottom: 18px;
+  z-index: 9999;
+  max-width: 430px;
+  margin: auto;
+  padding: 13px 14px;
+  border-radius: 18px;
+  background: rgba(15, 23, 42, .94);
+  border: 1px solid rgba(96, 165, 250, .28);
+  color: #e5e7eb;
+  box-shadow: 0 20px 60px rgba(0,0,0,.35);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: .3s ease;
+}
+
+.pwa-update-toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.pwa-update-toast button {
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: #2563eb;
+  color: white;
+  font-weight: 800;
+}
+
+/* ========================================
+   FULL OFFLINE PWA APP EXPERIENCE
+   Safe layer only - does not affect cards/table/pagination
+======================================== */
+
+#pwaSplash {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background:
+    radial-gradient(circle at top, rgba(37, 99, 235, .22), transparent 35%),
+    linear-gradient(135deg, #07111f, #0b1730 55%, #020617);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: .45s ease;
+}
+
+#pwaSplash.hide {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pwa-splash-logo {
+  width: 86px;
+  height: 86px;
+  border-radius: 26px;
+  background: linear-gradient(135deg, #2563eb, #38bdf8);
+  display: grid;
+  place-items: center;
+  color: white;
+  font-weight: 900;
+  font-size: 28px;
+  box-shadow: 0 24px 70px rgba(37, 99, 235, .45);
+}
+
+.pwa-splash-title {
+  margin-top: 18px;
+  color: #e5f0ff;
+  font-weight: 900;
+  font-size: 20px;
+}
+
+.pwa-splash-sub {
+  margin-top: 6px;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+#pwaInstallBox {
+  position: fixed;
+  left: 14px;
+  right: 14px;
+  bottom: 88px;
+  z-index: 9999;
+  display: none;
+}
+
+#pwaInstallBox.show {
+  display: block;
+}
+
+.pwa-install-card {
+  max-width: 430px;
+  margin: auto;
+  display: grid;
+  grid-template-columns: 42px 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 14px;
+  border-radius: 22px;
+  background: rgba(15, 23, 42, .92);
+  border: 1px solid rgba(148, 163, 184, .22);
+  box-shadow: 0 20px 60px rgba(0,0,0,.35);
+  backdrop-filter: blur(18px);
+  color: #e5e7eb;
+}
+
+.pwa-install-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 15px;
+  display: grid;
+  place-items: center;
+  background: rgba(37, 99, 235, .18);
+}
+
+.pwa-install-card strong {
+  font-size: 14px;
+}
+
+.pwa-install-card p {
+  margin: 2px 0 0;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+#pwaInstallBtn {
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 13px;
+  background: linear-gradient(135deg, #2563eb, #38bdf8);
+  color: white;
+  font-weight: 800;
+}
+
+#pwaCloseBtn {
+  border: 0;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 22px;
+}
+
+#offlineBanner {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-80px);
+  z-index: 9999;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, .96);
+  color: #111827;
+  font-size: 12px;
+  font-weight: 900;
+  box-shadow: 0 16px 45px rgba(0,0,0,.28);
+  transition: .35s ease;
+}
+
+#offlineBanner.show {
+  transform: translateX(-50%) translateY(0);
+}
+
+.pwa-update-toast {
+  position: fixed;
+  left: 14px;
+  right: 14px;
+  bottom: 18px;
+  z-index: 9999;
+  max-width: 430px;
+  margin: auto;
+  padding: 13px 14px;
+  border-radius: 18px;
+  background: rgba(15, 23, 42, .94);
+  border: 1px solid rgba(96, 165, 250, .28);
+  color: #e5e7eb;
+  box-shadow: 0 20px 60px rgba(0,0,0,.35);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: .3s ease;
+}
+
+.pwa-update-toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.pwa-update-toast button {
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: #2563eb;
+  color: white;
+  font-weight: 800;
+}

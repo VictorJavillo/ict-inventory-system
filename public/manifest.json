@@ -2,6 +2,7 @@
   "name": "ICT Inventory System",
   "short_name": "ICT Inventory",
   "start_url": "/login.html",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#07111f",
   "theme_color": "#07111f",

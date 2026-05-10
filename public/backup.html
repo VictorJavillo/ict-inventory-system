@@ -5,10 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Backup Management | ICT Inventory</title>
   <link rel="stylesheet" href="/style.css" />
+  <link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#07111f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ICT Inventory">
 </head>
 <body>
+  
   <div class="layout"><aside class="sidebar"><div class="sidebar-header"><h2>ICT Inventory</h2></div><nav class="sidebar-nav"><a href="dashboard.html" data-nav="dashboard">Dashboard</a><a href="inventory.html" data-nav="inventory">Inventory</a><a href="borrow.html" data-nav="borrow">Borrow</a><a href="users.html" data-nav="users">Users</a><a href="logs.html" data-nav="logs">Logs</a><a href="backup.html" class="active" data-nav="backup">Backup</a><a href="settings.html" data-nav="settings">Settings</a><a href="#" onclick="logout()" data-nav="logout">Logout</a></nav></aside><main class="main-content"><div class="page-header"><div><h1>Backup Management</h1><p>Create, refresh, and download your ICT Inventory database backups.</p></div></div><div class="backup-grid"><div class="card backup-hero-card"><div class="backup-hero-content"><div class="backup-badge">System Protection</div><h2>Database Backup</h2><p>Generate a full backup of your ICT Inventory records to keep your data safe and ready for recovery when needed.</p><div class="backup-actions"><button class="btn btn-primary" id="createBackupBtn" onclick="createBackup()">Create Backup</button><button class="btn btn-secondary" onclick="loadBackups()">Refresh List</button></div></div></div><div class="backup-stats"><div class="card stat-card"><span class="stat-label">Total Backups</span><h3 id="totalBackups">0</h3></div><div class="card stat-card"><span class="stat-label">Latest Backup</span><h3 id="latestBackup">—</h3></div><div class="card stat-card"><span class="stat-label">Backup Status</span><h3 id="backupStatus">Ready</h3></div></div></div><div id="backupMessage"></div><div class="card"><div class="section-header"><div><h3>Available Backups</h3><p class="section-subtext">Download saved backup files anytime.</p></div><button class="btn btn-secondary" onclick="loadBackups()">Refresh</button></div><div class="table-wrap"><table class="table"><thead><tr><th>Filename</th><th>Date Created</th><th>Size</th><th>Action</th></tr></thead><tbody id="backupTableBody"><tr><td colspan="4" class="empty-cell">Loading backups...</td></tr></tbody></table></div></div></main></div>
+
   <script src="/app.js"></script>
+  <script src="pwa.js"></script>
   <script>
     function showMessage(message, type = 'success') { const box = document.getElementById('backupMessage'); box.innerHTML = `<div class="alert alert-${type}">${message}</div>`; setTimeout(() => { box.innerHTML = ''; }, 3500); }
     async function createBackup() { await checkSession(); const btn = document.getElementById('createBackupBtn'); const originalText = btn.textContent; const status = document.getElementById('backupStatus'); try { btn.disabled = true; btn.textContent = 'Creating...'; status.textContent = 'Creating...'; const res = await fetch('/api/backup', { method: 'POST', credentials: 'include' }); const data = await res.json(); if (!res.ok) throw new Error(data.error || 'Failed to create backup'); showMessage(data.message || 'Backup created successfully.', 'success'); status.textContent = 'Completed'; await loadBackups(); } catch (err) { showMessage(err.message || 'Error creating backup.', 'error'); status.textContent = 'Failed'; } finally { btn.disabled = false; btn.textContent = originalText; } }

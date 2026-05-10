@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Logs | ICT Inventory</title>
   <link rel="stylesheet" href="style.css" />
+  <link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#07111f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ICT Inventory">
 </head>
 <body>
   <div class="layout">
@@ -12,6 +17,7 @@
     <main class="main-content"><div class="logs-page"><section class="page-header logs-header"><div><h1>System Activity Logs</h1><p>Monitor all system actions, inventory activity, user changes, and audit trail records.</p></div><div class="logs-refresh-badge"><span>Last refresh</span><strong id="lastRefreshText">Just now</strong></div></section><section class="logs-stats-grid"><div class="logs-stat-card total"><div class="logs-stat-label">Total Logs</div><div class="logs-stat-value" id="totalLogsCount">0</div><div class="logs-stat-sub">All recorded activities</div></div><div class="logs-stat-card create"><div class="logs-stat-label">Create Actions</div><div class="logs-stat-value" id="createLogsCount">0</div><div class="logs-stat-sub">New records added</div></div><div class="logs-stat-card update"><div class="logs-stat-label">Update Actions</div><div class="logs-stat-value" id="updateLogsCount">0</div><div class="logs-stat-sub">Edited or modified entries</div></div><div class="logs-stat-card delete"><div class="logs-stat-label">Delete Actions</div><div class="logs-stat-value" id="deleteLogsCount">0</div><div class="logs-stat-sub">Removed records</div></div></section><section class="panel logs-panel logs-dark-panel"><div class="panel-header logs-panel-header"><div><h2 class="panel-title">Logs Table</h2><div class="panel-subtitle">Search, filter, export, and review all activity records.</div></div></div><div class="toolbar logs-toolbar"><div class="field logs-search-field"><input type="text" id="logSearch" class="logs-input" placeholder="Search user, action, details, item, date..." /></div><div class="field logs-filter-field"><select id="logActionFilter" class="logs-select"><option value="all">All Actions</option><option value="create">Create</option><option value="update">Update</option><option value="delete">Delete</option><option value="login">Login</option></select></div><div class="field logs-date-field"><input type="date" id="logDateFilter" class="logs-input" /></div><div class="logs-toolbar-actions"><button class="btn btn-primary" id="refreshLogsBtn" type="button">Refresh</button><button class="btn btn-secondary" id="exportLogsBtn" type="button">Export CSV</button></div></div><div class="table-wrap logs-table-wrap"><table class="logs-table"><thead><tr><th>#</th><th>Date & Time</th><th>User</th><th>Action</th><th>Module</th><th>Details</th></tr></thead><tbody id="logsTableBody"></tbody></table></div><div class="logs-footer-note">Showing <span id="visibleLogsCount">0</span> visible log(s).</div></section></div></main>
   </div>
   <script src="app.js"></script>
+  <script src="pwa.js"></script>
   <script>
     let allLogs = [];
     let filteredLogs = [];
