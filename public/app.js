@@ -642,7 +642,9 @@ function jumpToPage() {
 
 
 async function loadInventory() {
+
   try {
+
     const res = await fetch("/api/inventory");
 
     if (res.status === 401) {
@@ -651,13 +653,56 @@ async function loadInventory() {
     }
 
     const data = await safeJSON(res);
-    inventoryData = sortInventoryAscending(Array.isArray(data) ? data : []);
+
+    // SAVE OFFLINE CACHE
+    localStorage.setItem(
+      "offlineInventoryCache",
+      JSON.stringify(data)
+    );
+
+    inventoryData =
+      sortInventoryAscending(
+        Array.isArray(data) ? data : []
+      );
+
     filteredData = [];
 
     renderInventoryTable(inventoryData);
+
+    toastSuccess(
+      "Inventory synced successfully.",
+      "Online Mode"
+    );
+
     hideLoader();
+
   } catch (err) {
-    console.error("Failed to load inventory:", err);
+
+    console.warn(
+      "Offline inventory fallback:",
+      err
+    );
+
+    // LOAD OFFLINE CACHE
+    const offlineData = JSON.parse(
+      localStorage.getItem("offlineInventoryCache") || "[]"
+    );
+
+    inventoryData =
+      sortInventoryAscending(
+        Array.isArray(offlineData)
+          ? offlineData
+          : []
+      );
+
+    filteredData = [];
+
+    renderInventoryTable(inventoryData);
+
+    toastWarning(
+      "Offline Mode: Showing last saved inventory data."
+    );
+
     hideLoader();
   }
 }
@@ -2367,3 +2412,4 @@ document.addEventListener("keydown", function (e) {
     jumpToPage();
   }
 });
+
