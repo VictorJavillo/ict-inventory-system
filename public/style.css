@@ -7372,3 +7372,52 @@ tr.offline-syncing-row {
   background: rgba(255,255,255,.08);
   color: white;
 }
+.undo-toast {
+  left: 50%;
+  right: auto;
+  bottom: 92px;
+  transform: translateX(-50%);
+  width: calc(100% - 32px);
+  max-width: 360px;
+  padding: 0;
+  border-radius: 18px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #92400e, #d97706);
+  box-shadow: 0 18px 40px rgba(0,0,0,.35);
+  z-index: 999999;
+}
+
+.undo-toast-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+}
+
+.undo-icon {
+  font-size: 16px;
+}
+
+.undo-text {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.sync-undo-btn {
+  border: 0;
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 900;
+  color: #92400e;
+  background: #fff7ed;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,.18);
+}
+
+.sync-undo-btn:active {
+  transform: scale(.95);
+}

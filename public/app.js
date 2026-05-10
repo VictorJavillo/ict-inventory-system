@@ -1114,6 +1114,16 @@ async function deleteInventory(id) {
    try {
 
   if (!navigator.onLine) {
+    const alreadyQueued = getOfflineQueue().some(item =>
+  item.type === "delete" &&
+  item.url &&
+  item.url.includes(`/api/inventory/${id}`)
+);
+
+if (alreadyQueued) {
+  showUndoDeleteToast(id);
+  return;
+}
     addOfflineAction({
       type: "delete",
       url: `/api/inventory/${id}`,
@@ -1149,7 +1159,16 @@ updatePendingSyncBadge();
 
 } catch (err) {
   console.warn("Offline delete queued:", err);
+const alreadyQueued = getOfflineQueue().some(item =>
+  item.type === "delete" &&
+  item.url &&
+  item.url.includes(`/api/inventory/${id}`)
+);
 
+if (alreadyQueued) {
+  showUndoDeleteToast(id);
+  return;
+}
   addOfflineAction({
     type: "delete",
     url: `/api/inventory/${id}`,
@@ -2788,16 +2807,22 @@ function showUndoDeleteToast(id) {
   if (oldToast) oldToast.remove();
 
   const toast = document.createElement("div");
-  toast.className = "sync-toast pending show";
+  toast.className = "sync-toast pending undo-toast show";
 
   toast.innerHTML = `
-    <span>Delete queued offline.</span>
-    <button type="button" class="sync-undo-btn">Undo</button>
+    <div class="undo-toast-content">
+      <span class="undo-icon">🗑</span>
+      <span class="undo-text">Delete queued offline.</span>
+      <button type="button" class="sync-undo-btn">Undo</button>
+    </div>
   `;
 
   document.body.appendChild(toast);
 
-  toast.querySelector(".sync-undo-btn").onclick = () => {
+  toast.querySelector(".sync-undo-btn").onclick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
     let queue = getOfflineQueue();
 
     queue = queue.filter(item =>
@@ -2814,16 +2839,17 @@ function showUndoDeleteToast(id) {
         : inventoryData
     );
 
+    toast.remove();
+
     showSyncToast("Offline delete cancelled.", "success");
   };
 
   setTimeout(() => {
     if (document.body.contains(toast)) {
       toast.classList.remove("show");
-
       setTimeout(() => toast.remove(), 300);
     }
-  }, 5000);
+  }, 6000);
 }
 function showConflictModal(item) {
 
@@ -2917,6 +2943,10 @@ renderInventoryTable(currentFilteredInventory.length ? currentFilteredInventory 
       }
 
       const res = await fetch(item.url, options);
+      if (item.method === "DELETE" && res.status === 404) {
+  console.warn("Delete already done or item not found. Removing from queue.");
+  continue;
+}
 
       if (res.status === 409) {
 
