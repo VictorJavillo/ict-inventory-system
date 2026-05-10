@@ -1102,10 +1102,43 @@ async function saveInventoryForm(e) {
 
     const result = await safeJSON(res);
 
-    if (!res.ok) {
-      toastError(result.error || result.message || "Failed to save inventory.");
-      return;
-    }
+   if (!res.ok) {
+
+  // OFFLINE FALLBACK
+  if (!navigator.onLine && !editId) {
+
+    addToOfflineInventoryQueue(payload);
+
+    inventoryData.push({
+      ...payload,
+      id: `offline-${Date.now()}`
+    });
+
+    closeModal("inventoryModal");
+
+    const form = $("inventoryForm");
+
+    if (form) form.reset();
+
+    renderInventoryTable(inventoryData);
+
+    updatePendingSyncBadge();
+
+    toastWarning(
+      "Offline Mode: Inventory saved locally."
+    );
+
+    return;
+  }
+
+  toastError(
+    result.error ||
+    result.message ||
+    "Failed to save inventory."
+  );
+
+  return;
+}
 
     closeModal("inventoryModal");
 
