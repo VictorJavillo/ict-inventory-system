@@ -2644,3 +2644,106 @@ document.addEventListener("keydown", function (e) {
   }
 });
 
+
+/* ========================================
+   AUTO MOBILE PWA PROFILE MENU + LOGOUT
+======================================== */
+
+function injectMobileProfileMenu() {
+  if (document.querySelector(".mobile-profile-menu")) return;
+  if (location.pathname.includes("login.html")) return;
+
+  const menu = document.createElement("div");
+  menu.className = "mobile-profile-menu";
+  menu.innerHTML = `
+    <button class="mobile-profile-btn" onclick="toggleMobileProfileMenu()">
+      <span class="profile-avatar">👤</span>
+      <span class="profile-text">
+        <b id="mobileProfileName">Account</b>
+        <small id="mobileProfileRole">User</small>
+      </span>
+      <span class="profile-arrow">⌄</span>
+    </button>
+
+    <div class="mobile-profile-dropdown" id="mobileProfileDropdown">
+      <div class="profile-dropdown-header">
+        <div class="profile-avatar big">👤</div>
+        <div>
+          <b id="mobileDropdownName">Account</b>
+          <small id="mobileDropdownRole">User</small>
+        </div>
+      </div>
+
+      <button onclick="location.href='settings.html'">⚙️ Settings</button>
+      <button class="logout-btn" onclick="logoutUser()">🚪 Logout</button>
+    </div>
+  `;
+
+  document.body.appendChild(menu);
+}
+
+function toggleMobileProfileMenu() {
+  const menu = document.getElementById("mobileProfileDropdown");
+  if (!menu) return;
+
+  menu.classList.toggle("show");
+  document.body.classList.toggle("profile-menu-open", menu.classList.contains("show"));
+}
+
+document.addEventListener("click", function (e) {
+  const wrapper = document.querySelector(".mobile-profile-menu");
+  const menu = document.getElementById("mobileProfileDropdown");
+
+  if (!wrapper || !menu) return;
+
+  if (!wrapper.contains(e.target)) {
+    menu.classList.remove("show");
+    document.body.classList.remove("profile-menu-open");
+  }
+});
+
+async function loadMobileProfile() {
+  try {
+    const res = await fetch("/api/me", { credentials: "include" });
+    if (!res.ok) return;
+
+    const data = await res.json();
+    const user = data.user || data;
+
+    const name = user.full_name || user.username || "Account";
+    const role = user.role || "user";
+
+    [
+      ["mobileProfileName", name],
+      ["mobileDropdownName", name],
+      ["mobileProfileRole", role],
+      ["mobileDropdownRole", role]
+    ].forEach(([id, value]) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value;
+    });
+  } catch (err) {
+    console.warn("Profile load skipped:", err);
+  }
+}
+
+async function logoutUser() {
+  if (!confirm("Logout from ICT Inventory System?")) return;
+
+  try {
+    await fetch("/api/logout", {
+      method: "POST",
+      credentials: "include"
+    });
+  } catch (err) {
+    console.warn("Logout request failed:", err);
+  }
+
+  sessionStorage.clear();
+  window.location.href = "/login.html";
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+  injectMobileProfileMenu();
+  loadMobileProfile();
+});
