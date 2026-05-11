@@ -7211,17 +7211,18 @@ body[data-role="viewer"] .edit-btn {
 }
 
 @media (max-width: 768px) {
-  .sync-badge {
-    left: 14px;
-    bottom: 112px;
-    font-size: 12px;
-    padding: 10px 14px;
-  }
 
   .sync-toast {
-    bottom: 172px;
-    font-size: 12px;
+    bottom: 110px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+
+    width: calc(100% - 32px);
+    max-width: 360px;
+
+    border-radius: 18px;
   }
+
 }
 /* ================================
    PREMIUM OFFLINE ROW INDICATORS
