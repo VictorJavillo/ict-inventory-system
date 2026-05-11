@@ -1,4 +1,4 @@
-const CACHE_NAME = "ict-inventory-pwa-v7";
+const CACHE_NAME = "ict-inventory-pwa-v8";
 
 const APP_SHELL = [
   "/",
@@ -27,7 +27,6 @@ self.addEventListener("install", event => {
       .then(cache => cache.addAll(APP_SHELL))
   );
 
-  self.skipWaiting();
 });
 
 /* =========================
