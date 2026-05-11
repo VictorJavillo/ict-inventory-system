@@ -1,4 +1,4 @@
-const CACHE_NAME = "ict-inventory-pwa-v4";
+const CACHE_NAME = "ict-inventory-pwa-v5";
 
 const APP_SHELL = [
   "/",
@@ -112,4 +112,10 @@ self.addEventListener("fetch", event => {
 
   );
 
+});
+
+self.addEventListener("message", event => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
