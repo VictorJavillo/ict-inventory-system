@@ -7422,3 +7422,28 @@ tr.offline-syncing-row {
 .sync-undo-btn:active {
   transform: scale(.95);
 }
+
+/* FINAL FORCE MOBILE SYNC TOAST ABOVE BOTTOM NAV */
+@media (max-width: 768px) {
+
+  .sync-toast,
+  .sync-toast.show,
+  .undo-toast,
+  .undo-toast.show {
+    position: fixed !important;
+
+    left: 50% !important;
+    right: auto !important;
+
+    bottom: 145px !important;
+
+    transform: translateX(-50%) !important;
+
+    width: calc(100% - 32px) !important;
+    max-width: 360px !important;
+
+    z-index: 9999999 !important;
+    border-radius: 18px !important;
+  }
+
+}

@@ -1,4 +1,4 @@
-const CACHE_NAME = "ict-inventory-pwa-v3";
+const CACHE_NAME = "ict-inventory-pwa-v4";
 
 const APP_SHELL = [
   "/",
