@@ -1,4 +1,4 @@
-const CACHE_NAME = "ict-inventory-pwa-v5";
+const CACHE_NAME = "ict-inventory-pwa-v6";
 
 const APP_SHELL = [
   "/",
@@ -12,6 +12,7 @@ const APP_SHELL = [
   "/settings.html",
   "/style.css",
   "/app.js",
+  "/pwa.js",
   "/manifest.json",
   "/images/paf-logo-left.png"
 ];

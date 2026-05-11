@@ -27,8 +27,15 @@ if ("serviceWorker" in navigator) {
   window.addEventListener("load", async () => {
     const registration = await navigator.serviceWorker.register("/service-worker.js");
 
+    if (registration.waiting && navigator.serviceWorker.controller) {
+      newWorker = registration.waiting;
+      showUpdateToast();
+    }
+
     registration.addEventListener("updatefound", () => {
       newWorker = registration.installing;
+
+      if (!newWorker) return;
 
       newWorker.addEventListener("statechange", () => {
         if (
@@ -39,6 +46,10 @@ if ("serviceWorker" in navigator) {
         }
       });
     });
+
+    setInterval(() => {
+      registration.update();
+    }, 60 * 1000);
   });
 
   let refreshing = false;
