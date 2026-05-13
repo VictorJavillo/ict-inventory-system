@@ -1897,55 +1897,26 @@ function generatePrintSummary(data) {
     return;
   }
 
-  const categories = [
-    "Desktop Computer",
-    "Laptop",
-    "Printer",
-    "Mobile Phone",
-    "Handheld Radio",
-    "Base Radio",
-    "Television",
-    "Others"
-  ];
-
-  
-
-  const summary = {};
-  const grandColumnTotals = {};
-  categories.forEach(cat => grandColumnTotals[cat] = 0);
-
-  let grandTotal = 0;
+  const equipmentSet = new Set();
+  const unitSet = new Set();
+  const matrix = {};
 
   data.forEach(item => {
     const parsed = parseUnitDisplay(item.unit || "");
 
-    const site = parsed.unit || item.unit || "N/A";
+    const unit = parsed.unit || item.unit || "N/A";
+    const equipment = item.category || item.equipment || "Others";
 
-    const office =
-      parsed.office && parsed.office !== "N/A"
-        ? parsed.office
-        : "GENERAL / NO OFFICE";
+    equipmentSet.add(equipment);
+    unitSet.add(unit);
 
-    const equipment = categories.includes(item.category)
-      ? item.category
-      : "Others";
+    if (!matrix[equipment]) matrix[equipment] = {};
+    if (!matrix[equipment][unit]) matrix[equipment][unit] = 0;
 
-    if (!summary[site]) summary[site] = {};
-    if (!summary[site][office]) {
-      summary[site][office] = {};
-      categories.forEach(cat => summary[site][office][cat] = 0);
-    }
-
-    summary[site][office][equipment]++;
-    grandColumnTotals[equipment]++;
-    grandTotal++;
+    matrix[equipment][unit]++;
   });
 
-  
-  let rows = "";
-
-  Object.keys(summary)
-  .sort((a, b) => {
+  const units = Array.from(unitSet).sort((a, b) => {
     const aIndex = customUnitOrder.indexOf(a);
     const bIndex = customUnitOrder.indexOf(b);
 
@@ -1954,79 +1925,82 @@ function generatePrintSummary(data) {
     if (bIndex !== -1) return 1;
 
     return a.localeCompare(b);
-  })
-  .forEach(site => {
-    const siteColumnTotals = {};
-    categories.forEach(cat => siteColumnTotals[cat] = 0);
+  });
 
-    let siteTotal = 0;
+  const equipments = Array.from(equipmentSet).sort();
+
+  let grandTotal = 0;
+
+  let rows = `
+    <tr class="matrix-command-title">
+      <th colspan="${units.length + 2}">580ACWW INVENTORY</th>
+    </tr>
+
+    <tr class="matrix-location-title">
+      <th class="matrix-equipment-head" rowspan="2">Equipment</th>
+      <th colspan="${units.length}" class="matrix-location-head">UNIT / LOCATION</th>
+      <th class="matrix-total-head" rowspan="2">Total</th>
+    </tr>
+
+    <tr class="matrix-unit-row">
+      ${units.map(unit => `
+        <th class="matrix-vertical-head">
+          <span>${escapeHtml(unit)}</span>
+        </th>
+      `).join("")}
+    </tr>
+  `;
+
+  equipments.forEach(equipment => {
+    let rowTotal = 0;
 
     rows += `
-      <tr class="summary-site-title">
-        <td colspan="${categories.length + 2}">${escapeHtml(site)}</td>
-      </tr>
-      <tr class="summary-matrix-head">
-        <th>Office / Section</th>
-        ${categories.map(cat => `<th>${escapeHtml(cat)}</th>`).join("")}
-        <th>Total</th>
-      </tr>
+      <tr>
+        <td class="matrix-equipment-name">${escapeHtml(equipment)}</td>
     `;
 
-    Object.keys(summary[site]).sort().forEach(office => {
-      let officeTotal = 0;
+    units.forEach(unit => {
+      const count = matrix[equipment]?.[unit] || 0;
+      rowTotal += count;
+      grandTotal += count;
 
-      rows += `<tr>`;
-      rows += `<td class="summary-office">${escapeHtml(office)}</td>`;
-
-      categories.forEach(cat => {
-        const count = summary[site][office][cat] || 0;
-        officeTotal += count;
-        siteColumnTotals[cat] += count;
-        siteTotal += count;
-
-        rows += `
-          <td class="summary-count ${count > 0 ? "has-count" : "no-count"}">
-            ${count > 0 ? count : ""}
-          </td>
-        `;
-      });
-
-      rows += `<td class="summary-row-total">${officeTotal}</td>`;
-      rows += `</tr>`;
+      rows += `
+        <td class="matrix-count ${count > 0 ? "has-count" : "no-count"}">
+          ${count > 0 ? count : "N/A"}
+        </td>
+      `;
     });
 
     rows += `
-      <tr class="summary-site-total">
-        <td>SITE TOTAL - ${escapeHtml(site)}</td>
-        ${categories.map(cat => `
-          <td class="summary-count">${siteColumnTotals[cat] || ""}</td>
-        `).join("")}
-        <td class="summary-row-total">${siteTotal}</td>
+        <td class="matrix-row-total">${rowTotal}</td>
       </tr>
     `;
   });
 
   rows += `
-    <tr class="summary-grand-total-row">
-      <td>GRAND TOTAL PER EQUIPMENT</td>
-      ${categories.map(cat => `
-        <td class="summary-count">${grandColumnTotals[cat] || ""}</td>
-      `).join("")}
-      <td class="summary-row-total">${grandTotal}</td>
+    <tr class="matrix-grand-total-row">
+      <td>GRAND TOTAL</td>
+      ${units.map(unit => {
+        const unitTotal = equipments.reduce((sum, equipment) => {
+          return sum + (matrix[equipment]?.[unit] || 0);
+        }, 0);
+
+        return `<td class="matrix-count">${unitTotal || "N/A"}</td>`;
+      }).join("")}
+      <td class="matrix-row-total">${grandTotal}</td>
     </tr>
   `;
 
   summaryBox.innerHTML = rows;
 
-   if (grandTotalBox) {
+  if (grandTotalBox) {
     grandTotalBox.textContent = grandTotal;
   }
 
   const lastPageContainer = $("printLastPage");
 
   if (lastPageContainer) {
-    lastPageContainer.innerHTML =
-      generateLastPageMatrixSummary(data);
+    lastPageContainer.innerHTML = generateLastPageMatrixSummary(data);
   }
 }
 /* =========================
