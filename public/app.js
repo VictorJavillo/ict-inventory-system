@@ -842,7 +842,7 @@ const paginatedData = paginateData(sortedData);
         <td>${(currentPage - 1) * rowsPerPage + index + 1}</td>
 
 
-       <td class= data-label="Category">
+       <td data-label="Category">
   ${escapeHtml(item.category || "")}
 </td>
         <td class= data-label="Description">
@@ -857,12 +857,10 @@ const paginatedData = paginateData(sortedData);
        <td data-label="Status">
   ${badgeStatus(item.status || "")}
 </td>
-        <td>
-          <td class= data-label="Date Issued">
+         <td data-label="Date Issued">
   <span class="date-badge ${getDateClass(item.date_issued)}">
     ${escapeHtml(formatMonthYearDisplay(item.date_issued))}
   </span>
-</td>
         </td>
         <td class= data-label="Unit">
   ${escapeHtml(parsed.unit || item.unit || "")}
