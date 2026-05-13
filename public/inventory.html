@@ -307,6 +307,7 @@
         </div>
 
         <div id="printLastPage"></div>
+        </div>
     </main>
   </div>
 
@@ -461,6 +462,8 @@
   </div>
   <script src="/app.js" defer></script>
   <script src="pwa.js"></script>
+
+
 <!-- MOBILE BOTTOM NAV -->
 <nav class="mobile-bottom-nav">
   <a href="dashboard.html" class="mobile-nav-item active">
@@ -478,10 +481,14 @@
     <small>Borrow</small>
   </a>
 
-  <a href="#" class="mobile-nav-item" onclick="window.print()">
-    <span>🖨</span>
-    <small>Print</small>
-  </a>
+<a href="#"
+   class="mobile-nav-item"
+   onclick="event.preventDefault(); printInventoryReport();">
+
+  <span>🖨</span>
+  <small>Print</small>
+
+</a>
 
   <a href="settings.html" class="mobile-nav-item">
     <span>⚙</span>

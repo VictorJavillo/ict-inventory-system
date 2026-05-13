@@ -2022,7 +2022,6 @@ input[type="month"]::-webkit-calendar-picker-indicator {
   .sidebar-nav,
   .filter-container,
   .modal,
-  .card.table-wrap,
   .signatory-card,
   .borrow-hero,
   .borrow-info-card,
@@ -2031,7 +2030,16 @@ input[type="month"]::-webkit-calendar-picker-indicator {
   .users-footer {
     display: none !important;
   }
-
+.table-wrap,
+.card,
+.main,
+.layout {
+  display: block !important;
+  overflow: visible !important;
+  background: #fff !important;
+  box-shadow: none !important;
+  border: none !important;
+}
   .layout,
   .main,
   .main-content {
@@ -7526,6 +7534,12 @@ tr.offline-syncing-row {
   }
 }
 
+@media (max-width: 768px) {
+  .update-toast {
+    bottom: 110px;
+    max-width: 360px;
+  }
+}
 @media (max-width: 768px) {
   .update-toast {
     bottom: 110px;
