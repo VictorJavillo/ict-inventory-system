@@ -1383,6 +1383,16 @@ RETURNING id, nr, category, description, updated_at`,
         payload.remarks
       ]
     );
+    const inserted = result.rows[0];
+
+const assetCode = `580ACWW-${String(inserted.id).padStart(6, "0")}`;
+
+await pool.query(
+  `UPDATE inventory
+   SET asset_code = $1
+   WHERE id = $2`,
+  [assetCode, inserted.id]
+);
 
     await logActivity(
       req.session.user,

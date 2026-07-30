@@ -1,3 +1,9 @@
+/* Hide print layout during normal screen */
+#printArea {
+    display: none;
+}
+
+
 :root {
   --bg1: #0b1220;
   --bg2: #111c31;
@@ -1025,6 +1031,7 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 
 /* PRINT */
 @media print {
+
 
   .header-container {
     padding: 0;
@@ -7805,4 +7812,140 @@ tr.offline-syncing-row {
   .print-date-line {
     font-size: 11px !important;
   }
+}
+
+.barcode-card{
+
+    background:#fff;
+    color:#000;
+
+    max-width:650px;
+
+    margin:auto;
+
+    padding:25px;
+
+    border-radius:12px;
+
+}
+
+.barcode-card h2{
+
+    text-align:center;
+
+    margin-bottom:5px;
+
+}
+
+.barcode-card h4{
+
+    text-align:center;
+
+    margin-bottom:15px;
+
+}
+
+.barcode-info{
+
+    width:100%;
+
+    border-collapse:collapse;
+
+}
+
+.barcode-info td{
+
+    padding:8px;
+
+    border:1px solid #ccc;
+
+}
+
+#barcodeSvg{
+
+    display:block;
+
+    margin:auto;
+
+}
+.barcode-info{
+    width:100%;
+    border-collapse:collapse;
+    margin-bottom:15px;
+}
+
+.barcode-info td{
+    border:1px solid #ccc;
+    padding:6px 10px;
+    text-align:left;
+}
+
+#barcodeSvg{
+    display:block;
+    margin:15px auto;
+}
+
+@media print{
+
+    body *{
+        visibility:hidden;
+    }
+
+    #barcodeModal,
+    #barcodeModal *{
+        visibility:visible;
+    }
+
+    #barcodeModal{
+        position:absolute;
+        left:0;
+        top:0;
+        width:100%;
+        background:#fff;
+    }
+
+    #barcodeModal .modal-content{
+        box-shadow:none;
+        border:none;
+    }
+
+    button{
+        display:none;
+    }
+
+}
+
+.smart-search-wrapper{
+
+    display:flex;
+    align-items:center;
+    gap:8px;
+
+}
+
+.scan-btn{
+
+    width:44px;
+    height:44px;
+
+    border:none;
+
+    border-radius:10px;
+
+    cursor:pointer;
+
+    font-size:20px;
+
+    background:#2563eb;
+
+    color:#fff;
+
+    transition:.25s;
+
+}
+
+.scan-btn:hover{
+
+    transform:scale(1.05);
+
 }

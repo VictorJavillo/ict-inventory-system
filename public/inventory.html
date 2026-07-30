@@ -112,6 +112,10 @@
             <option value="WSO">WSO</option>
             <option value="ODP">ODP</option>
             <option value="SAO">SAO</option>
+            <option value="COMMAND">COMMAND</option>
+            <option value="MESSAGE CENTER">MESSAGE CENTER</option>
+            <option value="WPM">WPM</option>
+            <option value="JAGS">JAGS</option>
             <option value="581ACWG">581ACWG</option>
             <option value="582ACWG">582ACWG</option>
             <option value="583ACWG">583ACWG</option>
@@ -121,12 +125,30 @@
             <option value="589ABMS">589ABMS</option>
           </select>
 
-          <input
-            type="text"
-            id="searchInput"
-            placeholder="Smart search: Dell CEISO Windows 11..."
-            oninput="applyInventoryFilters()"
-          />
+          <div class="smart-search-wrapper">
+
+    <input
+        type="text"
+        id="searchInput"
+        placeholder="Smart search: Dell CEISO Windows 11..."
+        oninput="applyInventoryFilters()"
+    />
+
+    <button
+        type="button"
+        id="scanBarcodeBtn"
+        class="scan-btn"
+        title="Scan Barcode">
+        📷
+    </button>
+
+</div>
+
+<input
+    type="text"
+    id="barcodeScannerInput"
+    autocomplete="off"
+    style="position:absolute;left:-9999px;">
 
           <select id="searchColumn" onchange="applyInventoryFilters()">
             <option value="all">Search In: All Columns</option>
@@ -174,6 +196,7 @@
             <thead>
               <tr>
                 <th>NR</th>
+                <th>Asset Code</th>
                 <th>Category</th>
                 <th>Description</th>
                 <th>Serial Number</th>
@@ -386,6 +409,10 @@
               <option value="WSO">WSO</option>
               <option value="ODP">ODP</option>
               <option value="SAO">SAO</option>
+              <option value="COMMAND">Command</option>
+              <option value="MESSAGE CENTER">Message Center</option>
+               <option value="WPM">WPM</option>
+              <option value="JAGS">JAGS</option>
               <option value="581ACWG">581ACWG</option>
               <option value="582ACWG">582ACWG</option>
               <option value="583ACWG">583ACWG</option>
@@ -537,5 +564,64 @@
   onclick="openInventoryModal()">
   +
 </button>
+<div id="barcodeModal" class="modal">
+  <div class="modal-content" style="max-width:650px; text-align:center;">
+
+    <h2>PHILIPPINE AIR FORCE</h2>
+    <h4>ADVANCED ICT INVENTORY SYSTEM</h4>
+
+    <hr>
+
+    <table class="barcode-info">
+
+        <tr>
+            <td><b>Asset Code</b></td>
+            <td id="barcodeAssetCode"></td>
+        </tr>
+
+        <tr>
+            <td><b>Category</b></td>
+            <td id="barcodeCategory"></td>
+        </tr>
+
+        <tr>
+            <td><b>Description</b></td>
+            <td id="barcodeDescription"></td>
+        </tr>
+
+        <tr>
+            <td><b>Property No.</b></td>
+            <td id="barcodeProperty"></td>
+        </tr>
+
+        <tr>
+            <td><b>Unit</b></td>
+            <td id="barcodeUnit"></td>
+        </tr>
+
+        <tr>
+            <td><b>Status</b></td>
+            <td id="barcodeStatus"></td>
+        </tr>
+
+    </table>
+
+    <br>
+
+    <svg id="barcodeSvg"></svg>
+
+    <br><br>
+
+    <button class="btn btn-primary" onclick="window.print()">
+        🖨 Print
+    </button>
+
+    <button class="btn btn-secondary" onclick="closeModal('barcodeModal')">
+        Close
+    </button>
+
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 </body>
 </html>

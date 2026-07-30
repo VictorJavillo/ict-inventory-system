@@ -444,6 +444,49 @@ function closeModal(id) {
     modal.classList.remove("show");
   }
 }
+function showBarcode(item) {
+
+    document.getElementById("barcodeAssetCode").textContent =
+        item.asset_code || "";
+
+    document.getElementById("barcodeCategory").textContent =
+        item.category || "-";
+
+    document.getElementById("barcodeProperty").textContent =
+        item.property_number || "-";
+
+    document.getElementById("barcodeUnit").textContent =
+        item.unit || "-";
+
+    document.getElementById("barcodeStatus").textContent =
+        item.status || "-";
+
+    document.getElementById("barcodeDescription").textContent =
+        item.description || "-";
+
+    JsBarcode("#barcodeSvg", item.asset_code, {
+        format: "CODE128",
+        width: 2,
+        height: 80,
+        displayValue: true,
+        fontSize: 18,
+        margin: 8
+    });
+
+    openModal("barcodeModal");
+}
+function showBarcodeById(id){
+
+    const item = inventoryData.find(x => String(x.id) === String(id));
+
+    if(!item){
+        alert("Item not found.");
+        return;
+    }
+
+    showBarcode(item);
+
+}
 
 /* =========================
    FORMATTING
@@ -841,7 +884,9 @@ const paginatedData = paginateData(sortedData);
       <tr class="${getOfflineRowClass(item.id)}">
         <td>${(currentPage - 1) * rowsPerPage + index + 1}</td>
 
-
+<td data-label="Asset Code">
+  ${escapeHtml(item.asset_code || "")}
+</td>
        <td data-label="Category">
   ${escapeHtml(item.category || "")}
 </td>
@@ -891,6 +936,13 @@ const paginatedData = paginateData(sortedData);
     getOfflineRowClass(item.id) === "offline-delete-row"
       ? `<button type="button" class="btn btn-sm btn-danger" disabled>Delete Queued</button>`
       : `
+        <button
+         type="button"
+        class="btn btn-sm btn-secondary"
+        onclick="showBarcodeById(${item.id})">
+        📦 Barcode
+        </button>
+
         <button
           type="button"
           class="btn btn-sm btn-warning edit-btn desktop-action"
@@ -1708,6 +1760,10 @@ async function printInventoryReport() {
 
   const activeData = filteredData.length > 0 ? filteredData : inventoryData;
   const dataToPrint = sortInventoryAscending(activeData);
+  if (!dataToPrint || dataToPrint.length === 0) {
+  alert("No inventory data to print.");
+  return;
+}
   generatePrintSummary(dataToPrint);
   const printMode = getValue("printMode") || "table_summary";
 const reportPage = document.querySelector(".report-page");
@@ -1755,8 +1811,25 @@ if (reportPage) {
   setImage("checkedSignatureImg", "");
 }
 
-await waitForPrintAssets($("printArea") || document);
-setTimeout(() => window.print(), 250);
+const printArea = $("printArea");
+
+if (!printArea) {
+  alert("Print area not found.");
+  return;
+}
+
+printArea.style.display = "block";
+
+await waitForPrintAssets(printArea);
+
+setTimeout(() => {
+  window.print();
+
+  setTimeout(() => {
+    printArea.style.display = "none";
+  }, 500);
+
+}, 500);
 
 }
 
@@ -1854,6 +1927,7 @@ function generateLastPageMatrixSummary(data) {
 `;
 }
 const customUnitOrder = [
+  "COMMAND",
   "DWC",
   "ODO",
   "WOC",
@@ -1864,12 +1938,14 @@ const customUnitOrder = [
   "OFM",
   "ODL",
   "WPM",
+ "JAGS",
   "OESPA",
   "WIGO",
   "PAO",
   "OWSM",
   "SAO",
   "WADJ",
+  "MESSAGE CENTER",
   "WSO",
   "WSM",
 
@@ -1878,7 +1954,6 @@ const customUnitOrder = [
   "582ACWG",
   "583ACWG",
   "584ACWG",
-  "586ACWG",
   "586MCRS",
   "588RMSS",
   "589ABMS"
@@ -2236,6 +2311,51 @@ document.addEventListener("DOMContentLoaded", async () => {
 if (navigator.onLine) {
   await checkSession();
 }
+// ===== Barcode Scanner =====
+const scanBtn = document.getElementById("scanBarcodeBtn");
+const searchInput = document.getElementById("searchInput");
+
+let scanMode = false;
+
+if (scanBtn && searchInput) {
+
+    scanBtn.addEventListener("click", () => {
+        scanMode = true;
+        searchInput.value = "";
+        searchInput.focus();
+        toastInfo("Ready to scan barcode...");
+    });
+
+    searchInput.addEventListener("keydown", (e) => {
+
+        if (!scanMode) return;
+        if (e.key !== "Enter") return;
+
+        e.preventDefault();
+
+        const code = searchInput.value.trim();
+
+        console.log("SCANNED:", code);
+
+        const item = inventoryData.find(x => x.asset_code === code);
+
+        console.log(item);
+
+        if (!item) {
+            toastError("Equipment not found.");
+            scanMode = false;
+            return;
+        }
+
+        scanMode = false;
+
+        showBarcode(item);
+
+    });
+
+}
+
+// Tuloy ang existing code mo...
   applyStaffFilterLock();
   const inventoryForm = $("inventoryForm");
   if (inventoryForm && !inventoryForm.dataset.bound) {
