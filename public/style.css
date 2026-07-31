@@ -7949,3 +7949,49 @@ tr.offline-syncing-row {
     transform:scale(1.05);
 
 }
+.scanned-row{
+    animation: scanFlash 2s ease;
+}
+
+@keyframes scanFlash{
+    0%{
+        background:#16a34a;
+        color:#fff;
+    }
+    50%{
+        background:#22c55e;
+        color:#fff;
+    }
+    100%{
+        background:inherit;
+        color:inherit;
+    }
+}
+
+/* =========================
+   SCANNED ROW HIGHLIGHT
+========================= */
+
+.scanned-row{
+    background: linear-gradient(90deg,#10b981,#22c55e) !important;
+    color:#fff !important;
+    animation: scanPulse .8s ease-in-out infinite alternate;
+    transition:.3s;
+}
+
+.scanned-row td{
+    color:#fff !important;
+    font-weight:700;
+}
+
+@keyframes scanPulse{
+
+    from{
+        box-shadow:0 0 5px #10b981;
+    }
+
+    to{
+        box-shadow:0 0 25px #22c55e;
+    }
+
+}

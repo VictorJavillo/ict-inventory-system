@@ -1,3 +1,10 @@
+// =====================================================
+// ADVANCED ICT INVENTORY SYSTEM
+// VERSION 2.0
+// =====================================================
+const scanBeep = new Audio("sounds/beep.mp3");
+
+
 /* ===============================
    OFFLINE QUEUE + PREMIUM SYNC UI
 ================================ */
@@ -171,6 +178,10 @@ function applyStaffFilterLock() {
     unitInput.disabled = true;
   }
 }
+// =====================================================
+// GLOBAL VARIABLES
+// =====================================================
+
 let filteredData = [];
 let inventoryData = [];
 let currentPage = 1;
@@ -179,7 +190,11 @@ let currentFilteredInventory = [];
 let statusChart;
 let licenseChart;
 let categoryChart;
-
+// =====================================================
+// SCANNER
+// =====================================================
+let scanHistory = [];
+let lastScannedId = null;
 const officeAllowedUnits = ["581ACWG", "582ACWG", "583ACWG", "584ACWG"];
 
 function $(id) {
@@ -444,25 +459,37 @@ function closeModal(id) {
     modal.classList.remove("show");
   }
 }
-function showBarcode(item) {
-
+function showBarcode(item){
     document.getElementById("barcodeAssetCode").textContent =
-        item.asset_code || "";
+    item.asset_code || "";
 
-    document.getElementById("barcodeCategory").textContent =
-        item.category || "-";
+document.getElementById("barcodeCategory").textContent =
+    item.category || "-";
 
-    document.getElementById("barcodeProperty").textContent =
-        item.property_number || "-";
+document.getElementById("barcodeDescription").textContent =
+    item.description || "-";
 
-    document.getElementById("barcodeUnit").textContent =
-        item.unit || "-";
+document.getElementById("barcodeProperty").textContent =
+    item.property_number || "-";
 
-    document.getElementById("barcodeStatus").textContent =
-        item.status || "-";
+document.getElementById("barcodeUnit").textContent =
+    item.unit || "-";
 
-    document.getElementById("barcodeDescription").textContent =
-        item.description || "-";
+document.getElementById("barcodeStatus").textContent =
+    item.status || "-";
+
+document.getElementById("barcodeSerial").textContent =
+    item.serial_number || "-";
+
+document.getElementById("barcodeDateIssued").textContent =
+    item.date_issued || "-";
+
+document.getElementById("barcodeRemarks").textContent =
+    item.remarks || "-";
+
+    console.log("1. Before JsBarcode");
+
+try {
 
     JsBarcode("#barcodeSvg", item.asset_code, {
         format: "CODE128",
@@ -473,7 +500,107 @@ function showBarcode(item) {
         margin: 8
     });
 
+    console.log("2. After JsBarcode");
+
+} catch (e) {
+
+    console.error("JsBarcode Error:", e);
+
+}
+
+console.log("3. Before openModal");
+
+highlightScannedRow(item.id);
+
+setTimeout(() => {
+
     openModal("barcodeModal");
+
+    console.log("4. After openModal");
+
+}, 700);
+
+lastScannedId = item.id;
+
+console.log("4. After openModal");
+}
+
+function highlightScannedRow(id){
+  console.log("highlightScannedRow called:", id);
+    // Hanapin ang item sa buong inventory
+    const index = inventoryData.findIndex(item => String(item.id) === String(id));
+
+    if(index === -1){
+        console.warn("Scanned item not found.");
+        return;
+    }
+
+    // Alamin kung nasa anong page
+    const page = Math.floor(index / rowsPerPage) + 1;
+
+    // Lipat sa tamang page
+    if(currentPage !== page){
+
+        currentPage = page;
+
+        renderInventoryTable(
+            filteredData.length ? filteredData : inventoryData
+        );
+
+    }
+
+    // Hintayin matapos mag-render ang table
+    setTimeout(() => {
+
+        document
+            .querySelectorAll(".scanned-row")
+            .forEach(r => r.classList.remove("scanned-row"));
+
+      const row = document.getElementById(`row-${id}`);
+
+console.log("Found row:", row);
+
+        if(!row){
+            console.warn("Row not found after rendering.");
+            return;
+        }
+
+        row.classList.add("scanned-row");
+
+        row.scrollIntoView({
+
+            behavior:"smooth",
+
+            block:"center"
+
+        });
+
+        setTimeout(()=>{
+
+            row.classList.remove("scanned-row");
+
+        },3000);
+
+    },150);
+
+}
+
+function addScanHistory(item){
+
+    scanHistory.unshift({
+
+        asset_code: item.asset_code,
+        description: item.description,
+        time: new Date().toLocaleTimeString()
+
+    });
+
+    if(scanHistory.length > 10){
+        scanHistory.pop();
+    }
+
+    console.table(scanHistory);
+
 }
 function showBarcodeById(id){
 
@@ -485,6 +612,291 @@ function showBarcodeById(id){
     }
 
     showBarcode(item);
+
+}
+
+// =========================
+// AUTO HIGHLIGHT SCANNED ROW
+// =========================
+function printBarcodeLabel() {
+
+    const assetCode =
+        document.getElementById("barcodeAssetCode").textContent;
+
+    const category =
+        document.getElementById("barcodeCategory").textContent;
+
+    const description =
+        document.getElementById("barcodeDescription").textContent;
+
+    const unit =
+        document.getElementById("barcodeUnit").textContent;
+
+    const barcodeSVG =
+        document.getElementById("barcodeSvg").outerHTML;
+
+    const win = window.open("", "_blank", "width=420,height=600");
+
+    win.document.write(`
+<!DOCTYPE html>
+<html>
+<head>
+
+<title>Barcode Label</title>
+
+<style>
+
+body{
+    margin:0;
+    padding:0;
+    background:#fff;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    font-family:Arial,Helvetica,sans-serif;
+}
+
+.label{
+
+    width:390px;
+
+    border:3px solid #111;
+
+    padding:18px;
+
+    box-sizing:border-box;
+
+}
+
+.header{
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:space-between;
+
+    margin-bottom:10px;
+
+}
+
+.logo{
+
+     width:50px;
+    height:50px;
+
+    object-fit:contain;
+
+}
+
+.header-center{
+
+    flex:1;
+
+    text-align:center;
+
+    padding:0 8px;
+
+}
+
+.title{
+font-size:18px;
+    font-weight:bold;
+    line-height:20px;
+
+}
+
+.subtitle{
+
+    font-size:11px;
+
+}
+
+.wing{
+    font-size:14px;
+
+    font-weight:bold;
+
+}
+
+.divider{
+
+    border-top:2px solid #000;
+
+    margin:12px 0;
+
+}
+
+.category{
+
+    font-size:24px;
+
+    font-weight:bold;
+
+    text-align:center;
+
+}
+
+.desc{
+
+    text-align:center;
+
+    font-size:18px;
+
+    margin-top:5px;
+
+}
+
+.unit{
+
+    text-align:center;
+
+    font-size:22px;
+
+    font-weight:bold;
+
+    margin-top:8px;
+
+}
+
+.barcode{
+
+    margin:20px 0 10px;
+
+    text-align:center;
+
+}
+
+.barcode svg{
+
+    width:100%;
+
+    height:95px;
+
+}
+
+.asset{
+
+    margin-top:8px;
+
+    text-align:center;
+
+    font-size:18px;
+
+    font-weight:bold;
+
+    letter-spacing:2px;
+
+}
+
+.footer{
+
+    margin-top:18px;
+
+    border-top:2px solid #000;
+
+    padding-top:8px;
+
+    text-align:center;
+
+    font-size:11px;
+
+    font-weight:bold;
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="label">
+
+<div class="header">
+
+    <img src="images/paf-logo-left.png" class="logo">
+
+    <div class="header-center">
+
+        <div class="title">
+            PHILIPPINE AIR FORCE
+        </div>
+
+        <div class="subtitle">
+            ADVANCED ICT INVENTORY SYSTEM
+        </div>
+
+        <div class="wing">
+            580TH AIRCRAFT CONTROL AND WARNING WING
+        </div>
+
+    </div>
+
+    <img src="images/paf-logo-right.png" class="logo">
+
+</div>
+
+<div class="divider"></div>
+
+<div class="category">
+
+${category}
+
+</div>
+
+<div class="desc">
+
+${description}
+
+</div>
+
+<div class="unit">
+
+${unit}
+
+</div>
+
+<div class="barcode">
+
+${barcodeSVG}
+
+</div>
+
+<div class="asset">
+
+${assetCode}
+
+</div>
+
+<div class="footer">
+
+PROPERTY OF PHILIPPINE AIR FORCE<br>
+
+DO NOT REMOVE
+
+</div>
+
+</div>
+
+<script>
+
+window.onload=function(){
+
+window.print();
+
+setTimeout(()=>window.close(),500);
+
+}
+
+</script>
+
+</body>
+
+</html>
+`);
+
+    win.document.close();
 
 }
 
@@ -881,7 +1293,7 @@ const paginatedData = paginateData(sortedData);
     const parsed = parseUnitDisplay(item.unit || "");
 
     return `
-      <tr class="${getOfflineRowClass(item.id)}">
+      <tr id="row-${item.id}" class="${getOfflineRowClass(item.id)}">
         <td>${(currentPage - 1) * rowsPerPage + index + 1}</td>
 
 <td data-label="Asset Code">
@@ -2247,7 +2659,32 @@ renderInventoryTable(
     : inventoryData
 );
 }
+function highlightInventoryRow(id) {
 
+    const row = document.getElementById(`row-${id}`);
+
+    if (!row) return;
+
+    row.scrollIntoView({
+        behavior: "smooth",
+        block: "center"
+    });
+
+    // Save original background
+    const original = row.style.backgroundColor;
+
+    row.style.transition = "background-color .3s ease";
+    row.style.backgroundColor = "#16a34a";
+
+    setTimeout(() => {
+        row.style.backgroundColor = "#22c55e";
+    }, 300);
+
+    setTimeout(() => {
+        row.style.backgroundColor = original;
+    }, 2000);
+
+}
 function filterInventory() {
   applyInventoryFilters();
 }
@@ -2312,50 +2749,19 @@ if (navigator.onLine) {
   await checkSession();
 }
 // ===== Barcode Scanner =====
-const scanBtn = document.getElementById("scanBarcodeBtn");
 const searchInput = document.getElementById("searchInput");
 
-let scanMode = false;
+let scannerBuffer = "";
+let scannerTimer = null;
 
-if (scanBtn && searchInput) {
+if (searchInput) {
 
-    scanBtn.addEventListener("click", () => {
-        scanMode = true;
-        searchInput.value = "";
-        searchInput.focus();
-        toastInfo("Ready to scan barcode...");
-    });
+    // Laging handa ang scanner
+    searchInput.focus();
 
-    searchInput.addEventListener("keydown", (e) => {
-
-        if (!scanMode) return;
-        if (e.key !== "Enter") return;
-
-        e.preventDefault();
-
-        const code = searchInput.value.trim();
-
-        console.log("SCANNED:", code);
-
-        const item = inventoryData.find(x => x.asset_code === code);
-
-        console.log(item);
-
-        if (!item) {
-            toastError("Equipment not found.");
-            scanMode = false;
-            return;
-        }
-
-        scanMode = false;
-
-        showBarcode(item);
-
-    });
 
 }
-
-// Tuloy ang existing code mo...
+// Tuloy ang existing code ...
   applyStaffFilterLock();
   const inventoryForm = $("inventoryForm");
   if (inventoryForm && !inventoryForm.dataset.bound) {
@@ -3105,3 +3511,76 @@ window.addEventListener("online", () => {
 window.addEventListener("offline", () => {
   showSyncToast("Offline mode enabled.", "pending");
 });
+/* ================================
+   USB BARCODE SCANNER
+================================ */
+
+const scannerInput = document.getElementById("barcodeScannerInput");
+
+if (scannerInput) {
+
+    function focusScanner() {
+
+    // Huwag i-focus ang scanner habang may bukas na modal
+    if (
+        document.getElementById("inventoryModal")?.classList.contains("show") ||
+        document.getElementById("barcodeModal")?.classList.contains("show")
+    ) {
+        return;
+    }
+
+    scannerInput.focus();
+}
+    // Automatic focus kapag nag-load ang page
+    //window.addEventListener("load", () => {
+       // setTimeout(focusScanner, 500);
+   // });
+
+    // Ibalik ang focus kapag nawala
+
+
+    // Kapag may na-scan at nag-Enter ang scanner
+  scannerInput.addEventListener("input", () => {
+
+    clearTimeout(scannerInput.scanTimer);
+
+    scannerInput.scanTimer = setTimeout(() => {
+
+        const code = scannerInput.value.trim();
+        scannerInput.value = "";
+
+        if (!code) {
+            focusScanner();
+            return;
+        }
+
+        const item = inventoryData.find(i =>
+    String(i.asset_code).trim().toUpperCase() ===
+    code.trim().toUpperCase()
+);
+
+        if (!item) {
+            toastError("Equipment not found.");
+            focusScanner();
+            return;
+        }
+
+        toastSuccess("Equipment Found");
+        showBarcode(item);
+        focusScanner();
+
+    }, 100);
+
+});
+
+}
+const scanBtn = document.getElementById("scanBarcodeBtn");
+
+if (scanBtn && scannerInput) {
+    scanBtn.addEventListener("click", () => {
+        scannerInput.value = "";
+        scannerInput.focus();
+
+        toastInfo("Ready to Scan...");
+    });
+}

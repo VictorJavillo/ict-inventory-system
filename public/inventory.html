@@ -144,11 +144,6 @@
 
 </div>
 
-<input
-    type="text"
-    id="barcodeScannerInput"
-    autocomplete="off"
-    style="position:absolute;left:-9999px;">
 
           <select id="searchColumn" onchange="applyInventoryFilters()">
             <option value="all">Search In: All Columns</option>
@@ -258,7 +253,7 @@
             <div class="header-container">
               <img src="images/paf-logo-left.png" class="header-logo-left" alt="Left Logo" />
 
-              <div class="header-text">
+              <div class="header-center">
                 <div class="flight-plan-top">
                   Flight Plan 2040 Vision: A Credible and Agile Air Force Adaptable to Modern Warfare
                   and Responsive to National and Regional Security and Development.
@@ -562,7 +557,7 @@
   type="button"
   class="mobile-fab-add"
   onclick="openInventoryModal()">
-  +
+
 </button>
 <div id="barcodeModal" class="modal">
   <div class="modal-content" style="max-width:650px; text-align:center;">
@@ -588,6 +583,10 @@
             <td><b>Description</b></td>
             <td id="barcodeDescription"></td>
         </tr>
+        <tr>
+            <td><b>Serial Number</b></td>
+            <td id="barcodeSerial"></td>
+            </tr>
 
         <tr>
             <td><b>Property No.</b></td>
@@ -603,6 +602,15 @@
             <td><b>Status</b></td>
             <td id="barcodeStatus"></td>
         </tr>
+            <tr>
+    <td><b>Date Issued</b></td>
+    <td id="barcodeDateIssued"></td>
+</tr>
+
+<tr>
+    <td><b>Remarks</b></td>
+    <td id="barcodeRemarks"></td>
+</tr>
 
     </table>
 
@@ -612,9 +620,12 @@
 
     <br><br>
 
-    <button class="btn btn-primary" onclick="window.print()">
-        🖨 Print
-    </button>
+    <button
+    class="btn btn-primary"
+    type="button"
+    onclick="printBarcodeLabel()">
+    🖨 Print Label
+</button>
 
     <button class="btn btn-secondary" onclick="closeModal('barcodeModal')">
         Close
@@ -623,5 +634,11 @@
 </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<input
+    type="text"
+    id="barcodeScannerInput"
+    autocomplete="off"
+    spellcheck="false"
+    style="position:fixed;left:-9999px;top:-9999px;opacity:0;pointer-events:none;">
 </body>
 </html>
