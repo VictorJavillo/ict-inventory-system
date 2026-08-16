@@ -58,26 +58,16 @@
         <div class="form-grid signatory-grid">
           <div>
             <label for="preparedName">Prepared By:</label>
-            <select id="preparedName" onchange="selectPrepared()">
-              <option value="">Select</option>
-              <option value="batain">Sgt Ma Loise Abbie O Batain</option>
-              <option value="camarillo">Sgt Robert Jhon R Camarillo</option>
-              <option value="bantang">A1C Ian Gabriel B Bantang</option>
-              <option value="javillo">AM Victor D Javillo</option>
-              <option value="bogac">AW Love Joy S Bog-ac</option>
-              <option value="pacleb">AM Jayson Carl W Pacleb</option>
-              <option value="domingo">AM Joshua M Domingo</option>
-              <option value="palomo">AM Alexander C Palomo</option>
-            </select>
+           <select id="preparedName" onchange="selectPrepared()">
+    <option value="">Select</option>
+</select>
           </div>
 
           <div>
             <label for="checkedName">Checked By:</label>
             <select id="checkedName" onchange="selectChecked()">
-              <option value="">Select</option>
-              <option value="liwagan">MAJ MAYLENE B LIW-AGAN</option>
-              <option value="calimbas">CPT ROLAND JAMES A CALIMBAS</option>
-            </select>
+    <option value="">Select</option>
+</select>
           </div>
         </div>
       </div>
@@ -318,7 +308,39 @@
 
 -->          </div>
 
-          
+          <div class="print-signatories">
+
+    <div class="print-signatory">
+
+        <img id="preparedSignatureImg" class="print-signature">
+
+        <div id="preparedPrintName" class="print-name"></div>
+
+        <div class="print-rank-line">
+            <span id="preparedPrintRank"></span>
+            <span>PAF</span>
+        </div>
+
+        <div id="preparedPrintPosition" class="print-position"></div>
+
+    </div>
+
+    <div class="print-signatory">
+
+        <img id="checkedSignatureImg" class="print-signature">
+
+        <div id="checkedPrintName" class="print-name"></div>
+
+        <div class="print-rank-line">
+            <span id="checkedPrintRank"></span>
+            <span>PAF</span>
+        </div>
+
+        <div id="checkedPrintPosition" class="print-position"></div>
+
+    </div>
+
+</div>
 
                     <div class="print-footer">
             <img src="images/footer.png" class="footer-image" alt="Footer" />
@@ -352,7 +374,17 @@
               <option value="Handheld Radio">Handheld Radio</option>
               <option value="Television">Television</option>
               <option value="Base Radio">Base Radio</option>
+              <option value="Others">Others</option>
             </select>
+           <div id="customCategoryContainer" style="display: none; margin-top: 10px;">
+    <label for="customCategory">Specify Category</label>
+    <input
+        type="text"
+        id="customCategory"
+        placeholder="Enter equipment category"
+        autocomplete="off"
+    >
+</div>
           </div>
 
           <div>
@@ -415,8 +447,19 @@
               <option value="586MCRS">586MCRS</option>
               <option value="588RMSS">588RMSS</option>
               <option value="589ABMS">589ABMS</option>
+              <option value="Others">Others</option>
             </select>
           </div>
+          <div id="customUnitContainer" style="display: none; margin-top: 10px;">
+    <label for="customUnit">Specify Unit</label>
+    <input
+        type="text"
+        id="customUnit"
+        name="customUnit"
+        placeholder="Enter specific unit or location"
+        autocomplete="off"
+    >
+</div>
 
           <div>
             <label for="office">Office</label>
@@ -483,7 +526,7 @@
       </form>
     </div>
   </div>
-  <script src="/app.js" defer></script>
+  <script src="/app.js?v=9" defer></script>
   <script src="pwa.js"></script>
 
 

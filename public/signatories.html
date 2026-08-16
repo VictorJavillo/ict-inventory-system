@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signatories | ICT Inventory</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div class="layout">
+
+    <!-- ===========================
+         SIDEBAR
+    ============================ -->
+
+    <aside class="sidebar">
+
+        <div class="sidebar-header">
+            <h2>ICT Inventory</h2>
+        </div>
+
+        <nav class="sidebar-nav">
+
+            <a href="dashboard.html" data-nav="dashboard">
+                Dashboard
+            </a>
+
+            <a href="inventory.html" data-nav="inventory">
+                Inventory
+            </a>
+
+            <a href="borrow.html" data-nav="borrow">
+                Borrow
+            </a>
+
+            <a href="users.html" data-nav="users">
+                Users
+            </a>
+
+            <a href="logs.html" data-nav="logs">
+                Logs
+            </a>
+
+            <a href="signatories.html"
+               class="active"
+               data-nav="signatories">
+
+                Signatories
+
+            </a>
+
+            <a href="backup.html"
+               data-nav="backup">
+
+                Backup
+
+            </a>
+
+            <a href="settings.html"
+               data-nav="settings">
+
+                Settings
+
+            </a>
+
+            <a href="#"
+               onclick="logout()"
+               data-nav="logout">
+
+                Logout
+
+            </a>
+
+        </nav>
+
+    </aside>
+
+    <!-- ===========================
+         MAIN CONTENT
+    ============================ -->
+
+    <main class="main-content users-page">
+
+        <!-- HERO -->
+
+        <section class="users-hero">
+
+            <div>
+
+                <h1>
+
+                    Signatories Management
+
+                </h1>
+
+                <p>
+
+                    Manage authorized personnel who will appear
+                    automatically in printed inventory reports.
+
+                </p>
+
+            </div>
+
+            <button
+                class="btn-primary"
+                onclick="openAddSignatoryModal()">
+
+                + Add Signatory
+
+            </button>
+
+        </section>
+
+        <!-- ======================
+             STATISTICS
+        ======================= -->
+
+        <section class="users-stats">
+
+            <div class="user-stat-card">
+
+                <div class="user-stat-icon blue">
+                    👤
+                </div>
+
+                <div>
+
+                    <p class="user-stat-label">
+
+                        Total Signatories
+
+                    </p>
+
+                    <h3
+                        class="user-stat-value"
+                        id="totalSignatories">
+
+                        0
+
+                    </h3>
+
+                    <p class="user-stat-sub">
+
+                        Registered Personnel
+
+                    </p>
+
+                </div>
+
+            </div>
+
+            <div class="user-stat-card">
+
+                <div class="user-stat-icon green">
+                    ✔
+                </div>
+
+                <div>
+
+                    <p class="user-stat-label">
+
+                        Active
+
+                    </p>
+
+                    <h3
+                        class="user-stat-value"
+                        id="activeSignatories">
+
+                        0
+
+                    </h3>
+
+                    <p class="user-stat-sub">
+
+                        Ready to Print
+
+                    </p>
+
+                </div>
+
+            </div>
+
+            <div class="user-stat-card">
+
+                <div class="user-stat-icon purple">
+                    ✍
+                </div>
+
+                <div>
+
+                    <p class="user-stat-label">
+
+                        Prepared By
+
+                    </p>
+
+                    <h3
+                        class="user-stat-value"
+                        id="preparedCount">
+
+                        0
+
+                    </h3>
+
+                    <p class="user-stat-sub">
+
+                        Prepared Role
+
+                    </p>
+
+                </div>
+
+            </div>
+
+            <div class="user-stat-card">
+
+                <div class="user-stat-icon gold">
+                    ✅
+                </div>
+
+                <div>
+
+                    <p class="user-stat-label">
+
+                        Checked By
+
+                    </p>
+
+                    <h3
+                        class="user-stat-value"
+                        id="checkedCount">
+
+                        0
+
+                    </h3>
+
+                    <p class="user-stat-sub">
+
+                        Checking Role
+
+                    </p>
+
+                </div>
+
+            </div>
+
+        </section>
+                <!-- ======================
+             SIGNATORIES PANEL
+        ======================= -->
+
+        <section class="users-panel">
+
+            <div class="users-toolbar">
+
+                <div class="users-toolbar-left">
+
+                    <div class="users-search-wrap">
+
+                        <span class="users-search-icon">
+                            🔍
+                        </span>
+
+                        <input
+                            type="text"
+                            id="signatorySearch"
+                            placeholder="Search name, rank, position or office...">
+
+                    </div>
+
+                    <select
+                        id="roleFilter"
+                        class="users-role-filter">
+
+                        <option value="all">
+                            All Roles
+                        </option>
+
+                        <option value="Prepared By">
+                            Prepared By
+                        </option>
+
+                        <option value="Checked By">
+                            Checked By
+                        </option>
+
+                        <option value="Approved By">
+                            Approved By
+                        </option>
+
+                        <option value="Noted By">
+                            Noted By
+                        </option>
+
+                    </select>
+
+                </div>
+
+                <button
+                    id="refreshBtn"
+                    class="btn-refresh-premium">
+
+                    ↻ Refresh
+
+                </button>
+
+            </div>
+
+            <div
+                id="signatoriesStatus"
+                class="users-status-box info">
+
+                Loading signatories...
+
+            </div>
+
+            <div class="users-table-wrap">
+
+                <table class="users-table">
+
+                    <thead>
+
+                        <tr>
+
+                            <th width="70">
+                                Photo
+                            </th>
+
+                            <th width="90">
+                                Signature
+                            </th>
+
+                            <th>
+                                Full Name
+                            </th>
+
+                            <th>
+                                Rank
+                            </th>
+
+                            <th>
+                                Position
+                            </th>
+
+                            <th>
+                                Office
+                            </th>
+
+                            <th>
+                                Role
+                            </th>
+
+                            <th>
+                                Status
+                            </th>
+
+                            <th width="180">
+                                Action
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody id="signatoriesTableBody">
+
+                        <tr>
+
+                            <td colspan="9">
+
+                                <div
+                                    style="
+                                    text-align:center;
+                                    padding:45px;
+                                    color:#9aa4b2;">
+
+                                    No signatories found.
+
+                                </div>
+
+                            </td>
+
+                        </tr>
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+            <div
+                class="users-footer"
+                id="signatoriesFooter">
+
+                Showing 0 signatories
+
+            </div>
+
+        </section>
+
+    </main>
+
+</div>
+<!-- =====================================================
+     ADD / EDIT SIGNATORY MODAL
+====================================================== -->
+
+<div id="signatoryModal"
+     class="modal-overlay"
+     style="display:none;">
+
+    <div class="premium-modal">
+
+        <div class="modal-head">
+
+            <div>
+
+                <h2 id="modalTitle">
+
+                    Add Signatory
+
+                </h2>
+
+                <p>
+
+                    Manage personnel authorized to sign printed reports.
+
+                </p>
+
+            </div>
+
+            <button
+                class="modal-close"
+                onclick="closeSignatoryModal()">
+
+                ×
+
+            </button>
+
+        </div>
+
+        <form id="signatoryForm">
+
+            <input
+                type="hidden"
+                id="signatoryId">
+
+            <div class="form-grid">
+
+                <!-- FULL NAME -->
+
+                <div class="form-group">
+
+                    <label>
+
+                        Full Name
+
+                    </label>
+
+                    <input
+                        type="text"
+                        id="fullname"
+                        required
+                        placeholder="Juan Dela Cruz">
+
+                </div>
+
+                <!-- RANK -->
+
+                <div class="form-group">
+
+                    <label>
+
+                        Rank
+
+                    </label>
+
+                    <input
+                        type="text"
+                        id="rank"
+                        placeholder="LTC PAF">
+
+                </div>
+
+                <!-- POSITION -->
+
+                <div class="form-group">
+
+                    <label>
+
+                        Position
+
+                    </label>
+
+                    <input
+                        type="text"
+                        id="position"
+                        placeholder="Chief, CEIS">
+
+                </div>
+
+                <!-- OFFICE -->
+
+                <div class="form-group">
+
+                    <label>
+
+                        Office
+
+                    </label>
+
+                    <input
+                        type="text"
+                        id="office"
+                        placeholder="580 ACWW">
+
+                </div>
+
+                <!-- ROLE -->
+
+                <div class="form-group">
+
+                    <label>
+
+                        Print Role
+
+                    </label>
+
+                    <select id="role">
+
+                        <option value="Prepared By">
+
+                            Prepared By
+
+                        </option>
+
+                        <option value="Checked By">
+
+                            Checked By
+
+                        </option>
+
+                        <option value="Approved By">
+
+                            Approved By
+
+                        </option>
+
+                        <option value="Noted By">
+
+                            Noted By
+
+                        </option>
+
+                    </select>
+
+                </div>
+
+                <!-- STATUS -->
+
+                <div class="form-group">
+
+                    <label>
+
+                        Status
+
+                    </label>
+
+                    <select id="active">
+
+                        <option value="true">
+
+                            Active
+
+                        </option>
+
+                        <option value="false">
+
+                            Inactive
+
+                        </option>
+
+                    </select>
+
+                </div>
+
+            </div>
+
+            <!-- =============================
+                 PHOTO
+            ============================== -->
+
+            <div class="form-group">
+
+                <label>
+
+                    Photo
+
+                </label>
+
+                <div
+                    style="
+                    display:flex;
+                    align-items:center;
+                    gap:20px;">
+
+                    <img
+                        id="photoPreview"
+                        src="images/default-avatar.png"
+                        style="
+                        width:90px;
+                        height:90px;
+                        border-radius:50%;
+                        object-fit:cover;
+                        border:3px solid #2563eb;">
+
+                    <div>
+
+                        <input
+                            type="file"
+                            id="photoFile"
+                            accept="image/*">
+
+                        <small>
+
+                            PNG / JPG
+
+                        </small>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- =============================
+                 SIGNATURE
+            ============================== -->
+
+            <div class="form-group">
+
+                <label>
+
+                    Signature
+
+                </label>
+
+                <div
+                    style="
+                    display:flex;
+                    align-items:center;
+                    gap:20px;">
+
+                    <img
+                        id="signaturePreview"
+                        src=""
+                        style="
+                        width:260px;
+                        height:90px;
+                        object-fit:contain;
+                        background:#fff;
+                        border-radius:10px;
+                        border:2px dashed #2563eb;">
+
+                    <div>
+
+                        <input
+                            type="file"
+                            id="signatureFile"
+                            accept="image/png,image/jpeg">
+
+                        <small>
+
+                            Transparent PNG Recommended
+
+                        </small>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="modal-actions">
+
+                <button
+                    type="button"
+                    class="btn-secondary"
+                    onclick="closeSignatoryModal()">
+
+                    Cancel
+
+                </button>
+
+                <button
+                    type="submit"
+                    class="btn-primary">
+
+                    Save Signatory
+
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+<script src="app.js"></script>
+<script src="pwa.js"></script>
+
+<script src="signatories.js"></script>
+
+</body>
+</html>

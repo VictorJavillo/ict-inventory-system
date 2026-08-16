@@ -7995,3 +7995,73 @@ tr.offline-syncing-row {
     }
 
 }
+.signature-img{
+    width:120px;
+    height:45px;
+    object-fit:contain;
+    background:#fff;
+    border-radius:6px;
+    padding:3px;
+}
+.photo-avatar{
+
+    width:54px;
+
+    height:54px;
+
+    border-radius:50%;
+
+    object-fit:cover;
+
+    border:3px solid #2e6dff;
+
+    box-shadow:0 0 12px rgba(46,109,255,.35);
+
+}
+/* ==============================
+   PRINT SIGNATORIES
+============================== */
+
+.print-signatories{
+    margin-top:70px;
+    display:flex;
+    justify-content:space-between;
+    gap:80px;
+}
+
+.print-signatory{
+    width:45%;
+    text-align:center;
+}
+
+.print-signature{
+    width:180px;
+    height:70px;
+    object-fit:contain;
+    margin:0 auto 8px;
+    display:block;
+}
+
+.print-signatory .print-name{
+    font-size:15px;
+    font-weight:bold !important;
+    text-align:center;
+    margin-top:8px;
+    text-transform:none !important;
+    font-family:Arial, Helvetica, sans-serif;
+    color:#000;
+}
+
+.print-rank-line{
+    display:flex;
+    justify-content:center;
+    gap:60px;
+    font-size:14px;
+    font-weight:bold;
+    margin-top:3px;
+}
+
+.print-position{
+    font-size:13px;
+    margin-top:2px;
+}
