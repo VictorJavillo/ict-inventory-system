@@ -262,123 +262,7 @@ async function logout() {
   window.location.href = "/login.html";
 }
 
-/* =========================
-   MODAL
-========================= */
-function openModal(id) {
-  const modal = $(id);
-  if (modal) modal.style.display = "flex";
-}
 
-function closeModal(id) {
-  const modal = $(id);
-  if (modal) modal.style.display = "none";
-}
-
-/* =========================
-   FORMATTING
-========================= */
-function badgeStatus(status) {
-  return status === "OPNL"
-    ? `<span class="badge badge-opnl">OPNL</span>`
-    : `<span class="badge badge-nopnl">NOPNL</span>`;
-}
-
-function sortInventoryAscending(data) {
-  return [...data].sort((a, b) => {
-    const aNr = Number(a.nr) || 0;
-    const bNr = Number(b.nr) || 0;
-
-    if (aNr !== bNr) return aNr - bNr;
-
-    const aId = Number(a.id) || 0;
-    const bId = Number(b.id) || 0;
-    return aId - bId;
-  });
-}
-
-function formatMonthInput(value) {
-  if (!value) return "";
-
-  if (/^\d{4}-\d{2}$/.test(value)) {
-    return value;
-  }
-
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return value.slice(0, 7);
-  }
-
-  const date = new Date(value);
-  if (isNaN(date.getTime())) return "";
-
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-}
-
-function formatMonthYearDisplay(value) {
-  if (!value) return "";
-
-  if (/^\d{4}-\d{2}$/.test(value)) {
-    const [year, month] = value.split("-");
-    const date = new Date(Number(year), Number(month) - 1, 1);
-    return date.toLocaleDateString("en-US", {
-      month: "long",
-      year: "numeric"
-    });
-  }
-
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    const [year, month] = value.split("-");
-    const date = new Date(Number(year), Number(month) - 1, 1);
-    return date.toLocaleDateString("en-US", {
-      month: "long",
-      year: "numeric"
-    });
-  }
-
-  const date = new Date(value);
-  if (isNaN(date.getTime())) return value;
-
-  return date.toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric"
-  });
-}
-
-function parseMonthValue(dateValue) {
-  if (!dateValue) return null;
-
-  if (/^\d{4}-\d{2}$/.test(dateValue)) {
-    const [year, month] = dateValue.split("-").map(Number);
-    return new Date(year, month - 1, 1);
-  }
-
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
-    const [year, month] = dateValue.split("-").map(Number);
-    return new Date(year, month - 1, 1);
-  }
-
-  const date = new Date(dateValue);
-  return isNaN(date.getTime()) ? null : date;
-}
-
-function getDateClass(dateValue) {
-  if (!dateValue) return "";
-
-  const date = parseMonthValue(dateValue);
-  if (!date) return "";
-
-  const today = new Date();
-  const diffMonths =
-    (today.getFullYear() - date.getFullYear()) * 12 +
-    (today.getMonth() - date.getMonth());
-
-  const diffYears = diffMonths / 12;
-
-  if (diffYears <= 2) return "green";
-  if (diffYears > 2 && diffYears < 3.5) return "yellow";
-  if (diffYears >= 3.5) return "red";
-  return "";
-}
 
 /* =========================
    INVENTORY MODAL / FORM
@@ -1215,8 +1099,10 @@ async function printInventoryReport() {
   });
 
   printBody.innerHTML = html;
-  loadSignatories();
-  await waitForPrintAssets($("printArea") || document);
+
+await loadSelectedPrintSignatories();
+
+await waitForPrintAssets($("printArea") || document);
 
   setTimeout(() => {
     window.print();
@@ -1360,45 +1246,6 @@ function selectCheckedBorrow() {
   localStorage.setItem("checkedBy", JSON.stringify(p));
 }
 
-function loadSignatories() {
-  const prepared = JSON.parse(localStorage.getItem("preparedBy") || "null");
-  const checked = JSON.parse(localStorage.getItem("checkedBy") || "null");
-
-  if (prepared) {
-    setText("preparedPrintName", prepared.name);
-    setText("preparedPrintRank", prepared.rank);
-    setText("preparedPrintPosition", prepared.position);
-    setImage("preparedSignatureImg", prepared.signature);
-
-    const preparedSelect = $("preparedName");
-    if (preparedSelect) {
-      const foundKey = Object.keys(personnel).find(
-        key =>
-          personnel[key].name === prepared.name &&
-          personnel[key].rank === prepared.rank
-      );
-      if (foundKey) preparedSelect.value = foundKey;
-    }
-  }
-
-  if (checked) {
-    setText("checkedPrintName", checked.name);
-    setText("checkedPrintRank", checked.rank);
-    setText("checkedPrintPosition", checked.position);
-    setImage("checkedSignatureImg", checked.signature);
-
-    const checkedSelect = $("checkedName");
-    if (checkedSelect) {
-      const foundKey = Object.keys(personnel).find(
-        key =>
-          personnel[key].name === checked.name &&
-          personnel[key].rank === checked.rank
-      );
-      if (foundKey) checkedSelect.value = foundKey;
-    }
-  }
-}
-
 /* =========================
    FILTERS
 ========================= */
@@ -1490,13 +1337,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   if ($("inventoryTableBody")) {
     await loadInventory();
-    loadSignatories();
-  }
+    await loadSelectedPrintSignatories();
+}
 
-  if ($("borrowTableBody")) {
+if ($("borrowTableBody")) {
     await loadBorrows();
-    loadSignatories();
-  }
+    await loadSelectedPrintSignatories();
+}
 
   if ($("dashboardTableBody") || $("statusChart")) {
     await loadDashboard();

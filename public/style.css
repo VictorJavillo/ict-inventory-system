@@ -4549,7 +4549,7 @@ body[data-role="viewer"] .edit-btn {
 
   .last-sig-name {
     font-size: 15px !important;
-    font-weight: 900 !important;
+    font-weight: 400 !important;
     text-transform: uppercase !important;
     line-height: 1.1 !important;
   }
@@ -8064,4 +8064,33 @@ tr.offline-syncing-row {
 .print-position{
     font-size:13px;
     margin-top:2px;
+}
+@media print {
+
+    /* HIDE OLD SIGNATURE BLOCK */
+    .report-page .print-signatories {
+        display: none !important;
+    }
+
+}
+@media print {
+
+    #preparedPrintName {
+        font-weight: 400 !important;
+    }
+
+    #checkedPrintName {
+        font-weight: 700 !important;
+    }
+
+}
+.last-sig-rank {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    font-weight: 400;
+}
+
+.last-sig-rank .rank-paf {
+    margin-left: auto;
 }

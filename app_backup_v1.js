@@ -1,7 +1,3 @@
-// =====================================================
-// ADVANCED ICT INVENTORY SYSTEM
-// VERSION 2.0
-// =====================================================
 const scanBeep = new Audio("sounds/beep.mp3");
 
 
@@ -178,10 +174,6 @@ function applyStaffFilterLock() {
     unitInput.disabled = true;
   }
 }
-// =====================================================
-// GLOBAL VARIABLES
-// =====================================================
-
 let filteredData = [];
 let inventoryData = [];
 let currentPage = 1;
@@ -190,11 +182,7 @@ let currentFilteredInventory = [];
 let statusChart;
 let licenseChart;
 let categoryChart;
-// =====================================================
-// SCANNER
-// =====================================================
-let scanHistory = [];
-let lastScannedId = null;
+
 const officeAllowedUnits = ["581ACWG", "582ACWG", "583ACWG", "584ACWG"];
 
 function $(id) {
@@ -306,26 +294,6 @@ function handleCategoryChange() {
   const categoryEl = $("category");
   if (!categoryEl) return;
 
-  // =========================
-  // CUSTOM CATEGORY
-  // =========================
-  const customCategoryContainer = $("customCategoryContainer");
-  const customCategoryInput = $("customCategory");
-
-  if (customCategoryContainer && customCategoryInput) {
-    if (categoryEl.value === "Others") {
-      customCategoryContainer.style.display = "block";
-      customCategoryInput.required = true;
-    } else {
-      customCategoryContainer.style.display = "none";
-      customCategoryInput.required = false;
-      customCategoryInput.value = "";
-    }
-  }
-
-  // =========================
-  // EXISTING COMPUTER LOGIC
-  // =========================
   const isComputer = isComputerCategory(categoryEl.value);
 
   if (!isComputer) {
@@ -361,38 +329,13 @@ function handleUnitOfficeLogic() {
 
   if (!unitEl || !officeEl) return;
 
-  // =========================
-  // CUSTOM UNIT
-  // =========================
-  const customUnitContainer = $("customUnitContainer");
-  const customUnitInput = $("customUnit");
-
-  if (customUnitContainer && customUnitInput) {
-    if (unitEl.value === "Others") {
-      customUnitContainer.style.display = "block";
-      customUnitInput.required = true;
-    } else {
-      customUnitContainer.style.display = "none";
-      customUnitInput.required = false;
-      customUnitInput.value = "";
-    }
-  }
-
-  // =========================
-  // EXISTING OFFICE LOGIC
-  // =========================
   const selectedUnit = String(unitEl.value || "").trim().toUpperCase();
   const allowed = isOfficeAllowedUnit(selectedUnit);
 
   if (allowed) {
     setFieldLock("office", false);
-
-    if (normalizeText(officeEl.value) === "n/a") {
-      officeEl.value = "";
-    }
-
+    if (normalizeText(officeEl.value) === "n/a") officeEl.value = "";
     officeEl.placeholder = "Enter specific office";
-
   } else {
     officeEl.value = "N/A";
     setFieldLock("office", true);
@@ -555,23 +498,15 @@ try {
 
 console.log("3. Before openModal");
 
+openModal("barcodeModal");
+
 highlightScannedRow(item.id);
-
-setTimeout(() => {
-
-    openModal("barcodeModal");
-
-    console.log("4. After openModal");
-
-}, 700);
-
-lastScannedId = item.id;
 
 console.log("4. After openModal");
 }
 
 function highlightScannedRow(id){
-  console.log("highlightScannedRow called:", id);
+
     // Hanapin ang item sa buong inventory
     const index = inventoryData.findIndex(item => String(item.id) === String(id));
 
@@ -601,9 +536,7 @@ function highlightScannedRow(id){
             .querySelectorAll(".scanned-row")
             .forEach(r => r.classList.remove("scanned-row"));
 
-      const row = document.getElementById(`row-${id}`);
-
-console.log("Found row:", row);
+        const row = document.getElementById(`row-${id}`);
 
         if(!row){
             console.warn("Row not found after rendering.");
@@ -627,24 +560,6 @@ console.log("Found row:", row);
         },3000);
 
     },150);
-
-}
-
-function addScanHistory(item){
-
-    scanHistory.unshift({
-
-        asset_code: item.asset_code,
-        description: item.description,
-        time: new Date().toLocaleTimeString()
-
-    });
-
-    if(scanHistory.length > 10){
-        scanHistory.pop();
-    }
-
-    console.table(scanHistory);
 
 }
 function showBarcodeById(id){
@@ -1050,49 +965,9 @@ function openInventoryModal(item = null) {
     setValue("date_issued", formatMonthInput(item.date_issued));
 
     const parsedUnit = parseUnitDisplay(item.unit || "");
+    setSelectValueFlexible("unit", parsedUnit.unit || "", "");
+    setValue("office", parsedUnit.office || "N/A");
 
-const unitSelect = $("unit");
-const customUnitContainer = $("customUnitContainer");
-const customUnitInput = $("customUnit");
-
-const unitOptionExists = unitSelect
-  ? Array.from(unitSelect.options).some(
-      option =>
-        normalizeOptionValue(option.value) ===
-        normalizeOptionValue(parsedUnit.unit)
-    )
-  : false;
-
-if (unitOptionExists) {
-
-  // Existing predefined unit
-  setSelectValueFlexible("unit", parsedUnit.unit || "", "");
-
-  if (customUnitContainer) {
-    customUnitContainer.style.display = "none";
-  }
-
-  if (customUnitInput) {
-    customUnitInput.required = false;
-    customUnitInput.value = "";
-  }
-
-} else {
-
-  // Custom unit/location
-  setSelectValueFlexible("unit", "Others", "");
-
-  if (customUnitContainer) {
-    customUnitContainer.style.display = "block";
-  }
-
-  if (customUnitInput) {
-    customUnitInput.value = parsedUnit.unit || "";
-    customUnitInput.required = true;
-  }
-}
-
-setValue("office", parsedUnit.office || "N/A");
     setSelectValueFlexible("os", item.os || "N/A", "N/A");
     setSelectValueFlexible("windows_type", item.windows_type || "N/A", "N/A");
     setSelectValueFlexible("ms_office", item.ms_office || "N/A", "N/A");
@@ -1552,18 +1427,7 @@ async function saveInventoryForm(e) {
   
 
   const editId = getValue("editId");
-
-let category = getValue("category");
-
-if (category === "Others") {
-    category = getValue("customCategory").trim();
-
-    if (!category) {
-        alert("Please specify the equipment category.");
-        document.getElementById("customCategory").focus();
-        return;
-    }
-}
+  const category = getValue("category");
 
   let os = getValue("os");
   let windowsType = getValue("windows_type");
@@ -1577,31 +1441,12 @@ if (category === "Others") {
     antivirus = "N/A";
   }
 
-  let selectedUnit = getValue("unit");
-let officeValue = getValue("office");
+  const selectedUnit = getValue("unit");
+  let officeValue = getValue("office");
 
-// =========================
-// CUSTOM UNIT
-// =========================
-if (selectedUnit === "Others") {
-  selectedUnit = getValue("customUnit").trim();
-
-  if (!selectedUnit) {
-    alert("Please specify the unit or location.");
-    document.getElementById("customUnit").focus();
-    return;
+  if (!isOfficeAllowedUnit(selectedUnit)) {
+    officeValue = "N/A";
   }
-
-  // Custom locations do not use the Office field
-  officeValue = "N/A";
-}
-
-// =========================
-// EXISTING OFFICE RULE
-// =========================
-if (!isOfficeAllowedUnit(selectedUnit)) {
-  officeValue = "N/A";
-}
 
   const payload = {
     nr: editId ? "" : getNextNR(),
@@ -2274,86 +2119,9 @@ function waitForPrintAssets(root = document) {
     });
   }));
 }
-function formatRank(rank) {
-
-    if (!rank) return "";
-
-    rank = rank.trim().toUpperCase();
-
-    const withPAF = [
-        "AM",
-        "A2C",
-        "A1C",
-        "SGT",
-        "SSG",
-        "TSG",
-        "MSG",
-        "SMS",
-        "CMS",
-        "2LT",
-        "1LT",
-        "CPT",
-        "MAJ",
-        "LTC",
-        "COL",
-        "BGEN",
-        "MGEN",
-        "LTGEN"
-    ];
-
-    return withPAF.includes(rank)
-        ? `${rank} PAF`
-        : rank;
-
-}
-
-async function loadSelectedPrintSignatories() {
-
-    const prepared = JSON.parse(localStorage.getItem("preparedBy") || "null");
-    const checked = JSON.parse(localStorage.getItem("checkedBy") || "null");
-
-    if (prepared) {
-
-        setText("preparedPrintName",
-            (prepared.fullname || prepared.name || "").toUpperCase());
-
-        setText("preparedPrintRank",
-            prepared.rank || "");
-
-        setText("preparedPrintPosition",
-            prepared.position || "");
-
-        setImage(
-            "preparedSignatureImg",
-            prepared.signature_url || prepared.signature || ""
-        );
-
-    }
-
-    if (checked) {
-
-        setText("checkedPrintName",
-            (checked.fullname || checked.name || "").toUpperCase());
-
-        setText("checkedPrintRank",
-            checked.rank || "");
-
-        setText("checkedPrintPosition",
-            checked.position || "");
-
-        setImage(
-            "checkedSignatureImg",
-            checked.signature_url || checked.signature || ""
-        );
-
-    }
-
-}
 
 async function printInventoryReport() {
-
   const printDate = $("printDate");
-
   if (printDate) {
     printDate.textContent = new Date().toLocaleDateString("en-US", {
       year: "numeric",
@@ -2362,136 +2130,78 @@ async function printInventoryReport() {
     });
   }
 
-  const activeData =
-    filteredData.length > 0
-      ? filteredData
-      : inventoryData;
-
-  const dataToPrint =
-    sortInventoryAscending(activeData);
-
+  const activeData = filteredData.length > 0 ? filteredData : inventoryData;
+  const dataToPrint = sortInventoryAscending(activeData);
   if (!dataToPrint || dataToPrint.length === 0) {
-    alert("No inventory data to print.");
-    return;
-  }
-
-  // Generate original print summary
+  alert("No inventory data to print.");
+  return;
+}
   generatePrintSummary(dataToPrint);
+  const printMode = getValue("printMode") || "table_summary";
+const reportPage = document.querySelector(".report-page");
 
-  const printMode =
-    getValue("printMode") || "table_summary";
-
-  const reportPage =
-    document.querySelector(".report-page");
-
-  if (reportPage) {
-    reportPage.classList.toggle(
-      "print-grand-only",
-      printMode === "grand_only"
-    );
-  }
-
-  const printBody =
-    $("printTableBody");
-
+if (reportPage) {
+  reportPage.classList.toggle("print-grand-only", printMode === "grand_only");
+}
+  const printBody = $("printTableBody");
   if (!printBody) return;
 
-  printBody.innerHTML =
-    dataToPrint.map((item, index) => {
+  printBody.innerHTML = dataToPrint.map((item, index) => {
+    const parsed = parseUnitDisplay(item.unit || "");
 
-      const parsed =
-        parseUnitDisplay(item.unit || "");
+    return `
+      <tr>
+        <td>${index + 1}</td>
+        <td>${escapeHtml(item.category || "")}</td>
+        <td>${escapeHtml(item.description || "")}</td>
+        <td>${escapeHtml(item.serial_number || "")}</td>
+        <td>${escapeHtml(item.property_number || "")}</td>
+        <td>${escapeHtml(item.status || "")}</td>
+        <td>${escapeHtml(formatMonthYearDisplay(item.date_issued))}</td>
+        <td>${escapeHtml(parsed.unit || item.unit || "")}</td>
+        <td>${escapeHtml(parsed.office || "N/A")}</td>
+        <td>${escapeHtml(item.os || "N/A")}</td>
+        <td>${escapeHtml(item.windows_type || "N/A")}</td>
+        <td>${escapeHtml(item.ms_office || "N/A")}</td>
+        <td>${escapeHtml(item.antivirus || "N/A")}</td>
+        <td>${escapeHtml(item.remarks || "")}</td>
+      </tr>
+    `;
+  }).join("");
 
-      return `
-        <tr>
-          <td>${index + 1}</td>
-          <td>${escapeHtml(item.category || "")}</td>
-          <td>${escapeHtml(item.description || "")}</td>
-          <td>${escapeHtml(item.serial_number || "")}</td>
-          <td>${escapeHtml(item.property_number || "")}</td>
-          <td>${escapeHtml(item.status || "")}</td>
-          <td>${escapeHtml(
-            formatMonthYearDisplay(item.date_issued)
-          )}</td>
-          <td>${escapeHtml(
-            parsed.unit || item.unit || ""
-          )}</td>
-          <td>${escapeHtml(
-            parsed.office || "N/A"
-          )}</td>
-          <td>${escapeHtml(
-            item.os || "N/A"
-          )}</td>
-          <td>${escapeHtml(
-            item.windows_type || "N/A"
-          )}</td>
-          <td>${escapeHtml(
-            item.ms_office || "N/A"
-          )}</td>
-          <td>${escapeHtml(
-            item.antivirus || "N/A"
-          )}</td>
-          <td>${escapeHtml(
-            item.remarks || ""
-          )}</td>
-        </tr>
-      `;
+  if (CURRENT_USER && CURRENT_USER.role === "admin") {
+  loadSignatories();
+} else {
+  setText("preparedPrintName", "");
+  setText("preparedPrintRank", "");
+  setText("preparedPrintPosition", "");
+  setImage("preparedSignatureImg", "");
 
-    }).join("");
+  setText("checkedPrintName", "");
+  setText("checkedPrintRank", "");
+  setText("checkedPrintPosition", "");
+  setImage("checkedSignatureImg", "");
+}
 
-  // ==========================================
-  // SIGNATORIES — IBALIK LANG, HUWAG BAGUHIN
-  // ==========================================
+const printArea = $("printArea");
 
-  if (
-    CURRENT_USER &&
-    CURRENT_USER.role === "admin"
-  ) {
+if (!printArea) {
+  alert("Print area not found.");
+  return;
+}
 
-    await loadPrintSignatories();
-await loadSelectedPrintSignatories();
+printArea.style.display = "block";
 
-  } else {
+await waitForPrintAssets(printArea);
 
-    setText("preparedPrintName", "");
-    setText("preparedPrintRank", "");
-    setText("preparedPrintPosition", "");
-    setImage("preparedSignatureImg", "");
-
-    setText("checkedPrintName", "");
-    setText("checkedPrintRank", "");
-    setText("checkedPrintPosition", "");
-    setImage("checkedSignatureImg", "");
-
-  }
-
-  // ==========================================
-  // ORIGINAL PRINT FLOW
-  // ==========================================
-
-  const printArea =
-    $("printArea");
-
-  if (!printArea) {
-    alert("Print area not found.");
-    return;
-  }
-
-  printArea.style.display = "block";
-
-  await waitForPrintAssets(printArea);
+setTimeout(() => {
+  window.print();
 
   setTimeout(() => {
-
-    window.print();
-
-    setTimeout(() => {
-
-      printArea.style.display = "none";
-
-    }, 500);
-
+    printArea.style.display = "none";
   }, 500);
+
+}, 500);
 
 }
 
@@ -2507,11 +2217,11 @@ function printBorrow() {
    PRINT SUMMARY (NEW)
 ========================= */
 function generateLastPageMatrixSummary(data) {
-  const categoryMap = new Map();
+  const categoryCount = {};
   let grandTotal = 0;
 
   data.forEach(item => {
-    const rawCategory =
+    const category =
       item.category ||
       item.equipment ||
       item.equipment_type ||
@@ -2519,31 +2229,12 @@ function generateLastPageMatrixSummary(data) {
       item.type ||
       "Uncategorized";
 
-    // Clean the category for display
-    const displayName = String(rawCategory)
-      .normalize("NFKC")
-      .replace(/[\u200B-\u200D\uFEFF]/g, "")
-      .replace(/\s+/g, " ")
-      .trim();
-
-    // Canonical key used ONLY for grouping
-    const groupKey = displayName
-      .toLowerCase();
-
-    if (categoryMap.has(groupKey)) {
-      categoryMap.get(groupKey).count++;
-    } else {
-      categoryMap.set(groupKey, {
-        name: displayName,
-        count: 1
-      });
-    }
-
+    categoryCount[category] = (categoryCount[category] || 0) + 1;
     grandTotal++;
   });
 
-  const categories = Array.from(categoryMap.values()).sort((a, b) =>
-    a.name.localeCompare(b.name)
+  const sortedCategories = Object.keys(categoryCount).sort((a, b) =>
+    a.localeCompare(b)
   );
 
   return `
@@ -2554,7 +2245,6 @@ function generateLastPageMatrixSummary(data) {
       </div>
 
       <table class="last-page-matrix">
-
         <thead>
           <tr>
             <th colspan="2">TOTAL</th>
@@ -2564,87 +2254,49 @@ function generateLastPageMatrixSummary(data) {
         </thead>
 
         <tbody>
-
-          ${categories.map(category => `
+          ${sortedCategories.map(category => `
             <tr>
-              <td>${escapeHtml(category.name)}</td>
-              <td>${category.count}</td>
+              <td>${category}</td>
+              <td>${categoryCount[category]}</td>
               <td>-</td>
               <td>-</td>
             </tr>
           `).join("")}
-
           <tr class="last-page-total-row">
-            <td>GRAND TOTAL</td>
-            <td>${grandTotal}</td>
-            <td>-</td>
-            <td>-</td>
-          </tr>
-
+  <td>GRAND TOTAL</td>
+  <td>${grandTotal}</td>
+  <td>-</td>
+  <td>-</td>
+</tr>
         </tbody>
-
       </table>
 
-      <div class="last-page-signatures">
-
-        <div class="last-sig-box">
-          <div class="last-sig-label">Prepared by:</div>
-
-          <img
-            id="summaryPreparedSignatureImg"
-            class="last-sig-img"
-            alt="Prepared Signature"
-          />
-
-          <div
-            class="last-sig-name"
-            id="summaryPreparedPrintName"
-          ></div>
-
-          <div class="last-sig-rank">
-            <span id="summaryPreparedPrintRank"></span>
-             <span class="rank-paf">PAF</span>
-          </div>
-
-          <div
-            class="last-sig-position"
-            id="summaryPreparedPrintPosition"
-          ></div>
-        </div>
-
-        <div class="last-sig-box right">
-
-          <div class="last-sig-label">
-            Certified Correct by:
-          </div>
-
-          <img
-            id="summaryCheckedSignatureImg"
-            class="last-sig-img"
-            alt="Checked Signature"
-          />
-
-          <div
-            class="last-sig-name"
-            id="summaryCheckedPrintName"
-          ></div>
-
-          <div class="last-sig-rank">
-            <span id="summaryCheckedPrintRank"></span>
-             <span class="rank-paf">PAF</span>
-          </div>
-
-          <div
-            class="last-sig-position"
-            id="summaryCheckedPrintPosition"
-          ></div>
-
-        </div>
-
-      </div>
-
+<div class="last-page-signatures">
+  <div class="last-sig-box">
+    <div class="last-sig-label">Prepared by:</div>
+    <img id="preparedSignatureImg" class="last-sig-img" alt="Prepared Signature" />
+    <div class="last-sig-name" id="preparedPrintName"></div>
+    <div class="last-sig-rank">
+      <span id="preparedPrintRank"></span>
+      <span>PAF</span>
     </div>
-  `;
+    <div class="last-sig-position" id="preparedPrintPosition"></div>
+  </div>
+
+  <div class="last-sig-box right">
+    <div class="last-sig-label">Certified Correct by:</div>
+    <img id="checkedSignatureImg" class="last-sig-img" alt="Checked Signature" />
+    <div class="last-sig-name" id="checkedPrintName"></div>
+    <div class="last-sig-rank">
+      <span id="checkedPrintRank"></span>
+      <span>PAF</span>
+    </div>
+    <div class="last-sig-position" id="checkedPrintPosition"></div>
+  </div>
+</div>
+
+</div>
+`;
 }
 const customUnitOrder = [
   "COMMAND",
@@ -2694,48 +2346,20 @@ function generatePrintSummary(data) {
   const unitSet = new Set();
   const matrix = {};
 
-  const equipmentMap = {};
+  data.forEach(item => {
+    const parsed = parseUnitDisplay(item.unit || "");
 
-data.forEach(item => {
-  const parsed = parseUnitDisplay(item.unit || "");
+    const unit = parsed.unit || item.unit || "N/A";
+    const equipment = item.category || item.equipment || "Others";
 
-  const unit = parsed.unit || item.unit || "N/A";
+    equipmentSet.add(equipment);
+    unitSet.add(unit);
 
-  const rawEquipment =
-    item.category ||
-    item.equipment ||
-    "Others";
+    if (!matrix[equipment]) matrix[equipment] = {};
+    if (!matrix[equipment][unit]) matrix[equipment][unit] = 0;
 
-  // Used ONLY for grouping
-  const equipmentKey = String(rawEquipment)
-    .normalize("NFKC")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase();
-
-  // Keep the original proper capitalization for display
-  if (!equipmentMap[equipmentKey]) {
-    equipmentMap[equipmentKey] = String(rawEquipment)
-      .normalize("NFKC")
-      .replace(/\s+/g, " ")
-      .trim();
-  }
-
-  const equipment = equipmentMap[equipmentKey];
-
-  equipmentSet.add(equipment);
-  unitSet.add(unit);
-
-  if (!matrix[equipment]) {
-    matrix[equipment] = {};
-  }
-
-  if (!matrix[equipment][unit]) {
-    matrix[equipment][unit] = 0;
-  }
-
-  matrix[equipment][unit]++;
-});
+    matrix[equipment][unit]++;
+  });
 
   const units = Array.from(unitSet).sort((a, b) => {
     const aIndex = customUnitOrder.indexOf(a);
@@ -2820,125 +2444,97 @@ data.forEach(item => {
 
   const lastPageContainer = $("printLastPage");
 
-if (lastPageContainer) {
-  lastPageContainer.innerHTML = generateLastPageMatrixSummary(data);
-
-  // ================================
-  // MERGE DUPLICATE CATEGORY ROWS
-  // ================================
-  const summaryTable = lastPageContainer.querySelector(".last-page-matrix");
-
-  if (summaryTable) {
-    const rows = Array.from(
-      summaryTable.querySelectorAll("tbody tr")
-    );
-
-    const categoryRows = rows.filter(
-      row => !row.classList.contains("last-page-total-row")
-    );
-
-    const seenCategories = new Map();
-
-    categoryRows.forEach(row => {
-      const cells = row.querySelectorAll("td");
-
-      if (cells.length < 2) return;
-
-      const categoryName = cells[0].textContent
-        .normalize("NFKC")
-        .replace(/[\u200B-\u200D\uFEFF]/g, "")
-        .replace(/\s+/g, " ")
-        .trim();
-
-      const categoryKey = categoryName.toLowerCase();
-
-      const count = parseInt(
-        cells[1].textContent.trim(),
-        10
-      ) || 0;
-
-      if (seenCategories.has(categoryKey)) {
-        const existingRow = seenCategories.get(categoryKey);
-        const existingCells = existingRow.querySelectorAll("td");
-
-        const existingCount = parseInt(
-          existingCells[1].textContent.trim(),
-          10
-        ) || 0;
-
-        existingCells[1].textContent =
-          existingCount + count;
-
-        row.remove();
-
-      } else {
-        seenCategories.set(categoryKey, row);
-      }
-    });
+  if (lastPageContainer) {
+    lastPageContainer.innerHTML = generateLastPageMatrixSummary(data);
   }
-}
 }
 /* =========================
    SIGNATORIES
 ========================= */
+const personnel = {
+  batain: { name: "Ma Loise Abbie O Batain", rank: "SGT", position: "CEIS Personnel", signature: "images/signatures/batain.png" },
+  calimbas: { name: "ROLAND JAMES A CALIMBAS", rank: "CPT", position: "Assistant Director for CEIS", signature: "images/signatures/calimbas.png" },
+  liwagan: { name: "MAYLENE B LIW-AGAN", rank: "MAJ", position: "Director for CEIS", signature: "images/signatures/liw-agan.png" },
+  camarillo: { name: "Robert Jhon R Camarillo", rank: "SGT", position: "CEIS Personnel", signature: "images/signatures/camarillo.png" },
+  bantang: { name: "Ian Gabriel B Bantang", rank: "A1C", position: "CEIS Personnel", signature: "images/signatures/bantang.png" },
+  javillo: { name: "Victor D Javillo", rank: "AM", position: "CEIS Personnel", signature: "images/signatures/javillo.png" },
+  bogac: { name: "Love Joy S Bog-ac", rank: "AW", position: "CEIS Personnel", signature: "images/signatures/bog-ac.png" },
+  pacleb: { name: "Jayson Carl W Pacleb", rank: "AM", position: "CEIS Personnel", signature: "images/signatures/pacleb.png" },
+  domingo: { name: "Joshua M Domingo", rank: "AM", position: "CEIS Personnel", signature: "images/signatures/domingo.png" },
+  palomo: { name: "Alexander C Palomo", rank: "AM", position: "CEIS Personnel", signature: "images/signatures/palomo.png" }
+};
+
+function selectPrepared() {
+  const el = $("preparedName");
+  if (!el) return;
+
+  const key = el.value;
+  if (!personnel[key]) return;
+
+  const p = personnel[key];
+  setText("preparedPrintName", p.name);
+  setText("preparedPrintRank", p.rank);
+  setText("preparedPrintPosition", p.position);
+  setImage("preparedSignatureImg", p.signature);
+  localStorage.setItem("preparedBy", JSON.stringify(p));
+}
+
+function selectChecked() {
+  const el = $("checkedName");
+  if (!el) return;
+
+  const key = el.value;
+  if (!personnel[key]) return;
+
+  const p = personnel[key];
+  setText("checkedPrintName", p.name);
+  setText("checkedPrintRank", p.rank);
+  setText("checkedPrintPosition", p.position);
+  setImage("checkedSignatureImg", p.signature);
+  localStorage.setItem("checkedBy", JSON.stringify(p));
+}
 
 function selectPreparedBorrow() {
   selectPrepared();
 }
 
-  async function loadSelectedPrintSignatories() {
+function selectCheckedBorrow() {
+  selectChecked();
+}
 
-    const prepared =
-        JSON.parse(localStorage.getItem("preparedBy") || "null");
+function loadSignatories() {
+  const prepared = JSON.parse(localStorage.getItem("preparedBy") || "null");
+  const checked = JSON.parse(localStorage.getItem("checkedBy") || "null");
 
-    const checked =
-        JSON.parse(localStorage.getItem("checkedBy") || "null");
+  if (prepared) {
+    setText("preparedPrintName", prepared.name);
+    setText("preparedPrintRank", prepared.rank);
+    setText("preparedPrintPosition", prepared.position);
+    setImage("preparedSignatureImg", prepared.signature);
 
-    if (prepared) {
-
-        setText(
-            "summaryPreparedPrintName",
-            (prepared.fullname || prepared.name || "").toUpperCase()
-        );
-
-        setText(
-            "summaryPreparedPrintRank",
-            formatRank(prepared.rank)
-        );
-
-        setText(
-            "summaryPreparedPrintPosition",
-            prepared.position || ""
-        );
-
-        setImage(
-            "summaryPreparedSignatureImg",
-            prepared.signature_url || prepared.signature || ""
-        );
+    const preparedSelect = $("preparedName");
+    if (preparedSelect) {
+      const foundKey = Object.keys(personnel).find(
+        key => personnel[key].name === prepared.name && personnel[key].rank === prepared.rank
+      );
+      if (foundKey) preparedSelect.value = foundKey;
     }
+  }
 
-    if (checked) {
+  if (checked) {
+    setText("checkedPrintName", checked.name);
+    setText("checkedPrintRank", checked.rank);
+    setText("checkedPrintPosition", checked.position);
+    setImage("checkedSignatureImg", checked.signature);
 
-        setText(
-            "summaryCheckedPrintName",
-            (checked.fullname || checked.name || "").toUpperCase()
-        );
-
-        setText(
-            "summaryCheckedPrintRank",
-            formatRank(checked.rank)
-        );
-
-        setText(
-            "summaryCheckedPrintPosition",
-            checked.position || ""
-        );
-
-        setImage(
-            "summaryCheckedSignatureImg",
-            checked.signature_url || checked.signature || ""
-        );
+    const checkedSelect = $("checkedName");
+    if (checkedSelect) {
+      const foundKey = Object.keys(personnel).find(
+        key => personnel[key].name === checked.name && personnel[key].rank === checked.rank
+      );
+      if (foundKey) checkedSelect.value = foundKey;
     }
+  }
 }
 
 /* =========================
@@ -3112,7 +2708,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 if (navigator.onLine) {
   await checkSession();
 }
-
 // ===== Barcode Scanner =====
 const searchInput = document.getElementById("searchInput");
 
@@ -3124,6 +2719,44 @@ if (searchInput) {
     // Laging handa ang scanner
     searchInput.focus();
 
+    searchInput.addEventListener("input", () => {
+
+        clearTimeout(scannerTimer);
+
+        scannerBuffer = searchInput.value.trim();
+
+        // Hintayin kung may kasunod pang characters
+        scannerTimer = setTimeout(() => {
+
+            if (!scannerBuffer) return;
+
+            console.log("SCANNED:", scannerBuffer);
+
+            const item = inventoryData.find(
+                x => x.asset_code === scannerBuffer
+            );
+
+            if (!item) {
+                toastError("Equipment not found.");
+                searchInput.value = "";
+                searchInput.focus();
+                return;
+            }
+
+            toastSuccess("Equipment Found");
+
+            showBarcode(item);
+
+            setTimeout(() => {
+                highlightInventoryRow(item.id);
+            }, 100);
+
+            searchInput.value = "";
+            searchInput.focus();
+
+        }, 200); // 200ms walang bagong character = tapos na ang scan
+
+    });
 
 }
 // Tuloy ang existing code ...
@@ -3161,19 +2794,15 @@ if ($("inventoryTableBody")) {
 
   applyStaffFilterLock();
   applyInventoryFilters();
+  loadSignatories();
 
-  await loadPrintSignatories();         
-  await loadSelectedPrintSignatories();  
-
-  syncOfflineQueue();
+syncOfflineQueue();
 }
 
-if ($("borrowTableBody")) {
+  if ($("borrowTableBody")) {
     await loadBorrows();
-
-    await loadPrintSignatories();         
-    await loadSelectedPrintSignatories(); 
-}
+    loadSignatories();
+  }
 
   if ($("dashboardTableBody") || $("statusChart")) {
     await loadDashboard();
@@ -3889,24 +3518,18 @@ const scannerInput = document.getElementById("barcodeScannerInput");
 if (scannerInput) {
 
     function focusScanner() {
-
-    // Huwag i-focus ang scanner habang may bukas na modal
-    if (
-        document.getElementById("inventoryModal")?.classList.contains("show") ||
-        document.getElementById("barcodeModal")?.classList.contains("show")
-    ) {
-        return;
+        scannerInput.focus();
     }
 
-    scannerInput.focus();
-}
     // Automatic focus kapag nag-load ang page
-    //window.addEventListener("load", () => {
-       // setTimeout(focusScanner, 500);
-   // });
+    window.addEventListener("load", () => {
+        setTimeout(focusScanner, 500);
+    });
 
     // Ibalik ang focus kapag nawala
-
+    scannerInput.addEventListener("blur", () => {
+        setTimeout(focusScanner, 100);
+    });
 
     // Kapag may na-scan at nag-Enter ang scanner
   scannerInput.addEventListener("input", () => {
@@ -3952,101 +3575,4 @@ if (scanBtn && scannerInput) {
 
         toastInfo("Ready to Scan...");
     });
-}
-async function loadPrintSignatories(){
-
-  console.log("loadPrintSignatories() called");
-    try{
-
-        const res = await fetch("/api/signatories",{
-            credentials:"include"
-        });
-
-        const data = await res.json();
-        console.log("Signatories:", data);
-
-        if(!res.ok){
-            throw new Error(data.error);
-        }
-
-        const prepared =
-            document.getElementById("preparedName");
-
-        const checked =
-            document.getElementById("checkedName");
-
-        prepared.innerHTML =
-            `<option value="">Select</option>`;
-
-        checked.innerHTML =
-            `<option value="">Select</option>`;
-
-        data
-    .filter(s => s.active)
-    .forEach(s => {
-
-        const option = `
-            <option value="${s.id}">
-                ${s.rank || ""} ${s.fullname}
-            </option>
-        `;
-
-        if (s.role === "Prepared By") {
-            prepared.innerHTML += option;
-        }
-
-        if (s.role === "Checked By") {
-            checked.innerHTML += option;
-        }
-
-    });
-
-
-// ==========================================
-// SAVE SELECTED PREPARED BY
-// ==========================================
-prepared.onchange = function () {
-
-    const selected = data.find(
-        s => String(s.id) === String(this.value)
-    );
-
-    if (selected) {
-        localStorage.setItem(
-            "preparedBy",
-            JSON.stringify(selected)
-        );
-    } else {
-        localStorage.removeItem("preparedBy");
-    }
-
-};
-
-
-// ==========================================
-// SAVE SELECTED CHECKED BY
-// ==========================================
-checked.onchange = function () {
-
-    const selected = data.find(
-        s => String(s.id) === String(this.value)
-    );
-
-    if (selected) {
-        localStorage.setItem(
-            "checkedBy",
-            JSON.stringify(selected)
-        );
-    } else {
-        localStorage.removeItem("checkedBy");
-    }
-
-};
-
-    }catch(err){
-
-        console.error(err);
-
-    }
-
 }
